@@ -1,10 +1,14 @@
 # Multicontrollers in SDN using Ryu
 
-Igor Radichi
-Professor Luciano de Errico
-Final Paper
-Electrical Engineering BSc, w/ Computer Science spec.
-Universidade Federal de Minas Gerais - UFMG
+**Status**: WIP 🚧
+
+|Work record|
+|---|
+|Igor Radichi|
+|Professor Luciano de Errico|
+|Final Paper|
+|Electrical Engineering BSc, w/ Computer Science spec.|
+|Universidade Federal de Minas Gerais - UFMG|
 
 ## Prerequisites
 |Application|Version used|
