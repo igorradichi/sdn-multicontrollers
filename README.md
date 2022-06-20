@@ -16,6 +16,11 @@ Universidade Federal de Minas Gerais - UFMG
 |Python|3.8.10|
 |Curl|7.68|
 
+### Others
+|Application|Version used|
+|---|---|
+|Visual Studio Code|1.68.1|
+|Ubuntu|20.04 LTS| 
 ## Infrastructure layer
 ### Network
 - description: single-switch topology (with 4 hosts), with automated controller creation and controller fault detection
