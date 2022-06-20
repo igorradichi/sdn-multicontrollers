@@ -17,59 +17,57 @@ class myController(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(myController, self).__init__(*args, **kwargs)
-        self.r = redis.Redis()
 
+        #config file
         self.CONF = cfg.CONF
         self.CONF.register_opts([
-            cfg.IntOpt('PORT', 
-                        default=6633, help = ('Who am I?'))]
+            cfg.IntOpt(
+                'PORT', default=6633, help = ('Controller Port')
+            ),
+            cfg.StrOpt(
+                'IP', default='127.0.0.1', help = ('Controller IP')
+            )
+            ]
         )
 
-        self.logger.info("My port: %s",self.CONF.PORT)
-        self.datapaths = []
-        #self.monitor_thread = hub.spawn(self._monitor)
-        hub.spawn(self.myfunction)
+        #initializing redis DBs
+        self.routing_table = redis.Redis(host=self.CONF.IP, port=6379, db = 0)
+        self.master = redis.Redis(host=self.CONF.IP, port=6379, db = 1)
+
+        #datapaths dictionary
+        self.datapaths = {}
+
+        #controller identity
+        print("------------------------")
+        self.logger.info("Controller port: %s",self.CONF.PORT)
+        print("------------------------")
         
+        #start another thread
+        hub.spawn(self.monitorMaster)
     
-    def myfunction(self):
-        self.logger.info("waiting fot a master to fall")
+    #note when a MASTER controller is down
+    def monitorMaster(self):
+        print("------------------------")
+        self.logger.info("Master is being monitored...")
+        print("------------------------")
         while True:
             hub.sleep(1)
-            if int(self.r.hget("master","port"))==0:
-                self.logger.info("FREE MASTER")
-            else:
-                self.logger.info("THERE IS STILL A MASTER")
+            if int(self.master.hget("master","credits"))==1: #if no MASTER is present
+                print("------------------------")
+                self.logger.info("NO MASTER PRESENT")
+                print("------------------------")
+                self.logger.info("Requesting master role...")
+                for datapath in self.datapaths.values(): #take MASTER role for each datapath
+                    self.selfElectMaster(datapath)
 
-    def _monitor(self):
-        self.logger.info("waiting fot a master to fall")
-        while True:
-            hub.sleep(5)
-            if int(self.r.hget("master","port"))==0 and len(self.datapaths)>0:
-                self.selfElectMaster(1,self.datapaths[0].ofproto) ########
-    
-    def selfElectMaster(self,datapath,ofproto):
-        self.r.hset("master","credits",0)
-        self.r.hset("master","port",self.CONF.PORT)
+    #send MASTER role request to the datapath
+    def selfElectMaster(self,datapath):
+        ofproto = datapath.ofproto
+        self.master.hset("master","credits",0)
+        self.master.hset("master","port",self.CONF.PORT)
         self.send_role_request(datapath,ofproto.OFPCR_ROLE_MASTER)
 
-    #EVENT: SWITCH FEATURES
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
-        print("here")
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        
-        if int(self.r.hget("master","credits")) == 1:
-            self.selfElectMaster(datapath,ofproto)
-        else:
-            self.send_role_request(datapath,ofproto.OFPCR_ROLE_SLAVE)
-        
-        match = parser.OFPMatch()
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
-
+    #generic role request
     def send_role_request(self, datapath, role):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
@@ -78,6 +76,7 @@ class myController(app_manager.RyuApp):
                                         ofp.OFPCID_UNDEFINED, 0)
         datapath.send_msg(req)
 
+    #add flow entry to the switch flow table
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -89,18 +88,27 @@ class myController(app_manager.RyuApp):
                                 match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    #EVENT: OTHER CONTROLLERS STATUS - DOESNT WORK
-    @set_ev_cls(ofp_event.EventOFPControllerStatusStatsReply,
-                MAIN_DISPATCHER)
-    def controller_status_multipart_reply_handler(self, ev):
-        status = []
-        for s in ev.msg.body:
-            status.append('short_id=%d role=%d reason=%d '
-                        'channel_status=%d properties=%s' %
-                        (s.short_id, s.role, s.reason,
-                        s.channel_status, repr(s.properties)))
-        self.logger.info('OFPControllerStatusStatsReply received: %s',
-                        status)
+    #EVENT: SWITCH FEATURES
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        
+        #register new datapath
+        self.datapaths[datapath.id] = datapath
+
+        #if there is no MASTER present
+        if int(self.master.hget("master","credits")) == 1:
+            self.selfElectMaster(datapath) #take MASTER role for this datapath
+        else: #else, take SLAVE role
+            self.send_role_request(datapath,ofproto.OFPCR_ROLE_SLAVE)
+        
+        #table-miss flow entry
+        match = parser.OFPMatch()
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                          ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, 0, match, actions)
 
     #EVENT: ROLE REPLY
     @set_ev_cls(ofp_event.EventOFPRoleReply, MAIN_DISPATCHER)
@@ -126,6 +134,8 @@ class myController(app_manager.RyuApp):
 
 
     #EVENT: STATUS CHANGE ORDER FROM THE SWITCH
+    #useful when a controller takes MASTER role from another one
+    #currently not used
     @set_ev_cls(ofp_event.EventOFPRoleStatus, MAIN_DISPATCHER)
     def role_status_handler(self, ev):
         msg = ev.msg
@@ -155,8 +165,7 @@ class myController(app_manager.RyuApp):
         self.logger.info('OFPRoleStatus received: role=%s reason=%s '
                         'generation_id=%d properties=%s', role, reason,
                         msg.generation_id, repr(msg.properties))
-    
-        self.r.hset(0, self.id, role)
+
 
     #EVENT: PACKET IN
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
@@ -171,6 +180,7 @@ class myController(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
 
+        #ignora LLDP packets
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             return
         
@@ -179,16 +189,15 @@ class myController(app_manager.RyuApp):
 
         dpid = datapath.id
 
-        self.datapaths.append(dpid)
+        self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
 
-        #self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
+        #add to the routing table
+        self.routing_table.hset(dpid, src, in_port)
 
-        self.r.hset(dpid, src, in_port)
-
-        if self.r.hexists(dpid,dst):
-            out_port = int(self.r.hget(dpid,dst))
-            print("I already knew this port")
-        else:
+        #if the table already has the info
+        if self.routing_table.hexists(dpid,dst):
+            out_port = int(self.routing_table.hget(dpid,dst)) #use the info
+        else: #else, FLOOD all ports
             out_port = ofproto.OFPP_FLOOD
         
         actions = [parser.OFPActionOutput(out_port)]
