@@ -30,16 +30,20 @@
 - description: single-switch topology (with 4 hosts), with automated controller creation and controller fault detection
 
   ```
-    sudo python3 network.py net.conf critical
+    sudo python3 network.py net.conf master-slave critical
   ```
 - ```network.py```
   - Mininet network file
 - ```net.conf```
   - config file for the network being initialized
-  - must contain the IP address the switch should connect
-  - must contain the number of controllers to be present
-  - must contain the TCP of the first controller connection
+  - ```ip``` must contain the IP address the switch should connect
+  - ```controllersFirstPort``` must contain the TCP of the first controller connection
     - the following ports will be added +1 and so on
+  - ```nControllers``` must contain the number of controllers to be present
+  - ```flowIdleTimeout``` must contain the switches' flow entries idle timeout
+  - ```flowHardTimeout``` must contain the switches' flow entries hard timeout
+- ```master-slave```
+  - switch-controller connection model (either ```master-slave``` or ```equal```)
 - ```critical```
   - logger level (debug, info, output, warning, error, critical)
   
@@ -71,9 +75,13 @@
     ```
 - ```--config-file <FILE>```
   - config file for the controller being initialized
-  - must contain the IP and the TCP port it will be listening to
+  - ```ip``` must contain the IP address of the connection
+  - ```port``` must contain TCP port it should listen to
     - the TCP port should be the same as the one passed in the first argument
   - auto configured when ```network.py``` runs
+  - ```connectionmodel``` must contain the switch-controller connection model  (either ```master-slave``` or ```equal```)
+  - ```flowIdleTimeout``` must contain the switches' flow entries idle timeout
+  - ```flowHardTimeout``` must contain the switches' flow entries hard timeout
 - ```controller.py```
   - Ryu controller application file name
 - ```ryu.app.ofctl_rest``` 

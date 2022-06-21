@@ -12,6 +12,8 @@ from ryu import cfg
 from ryu.lib import hub
 from time import sleep
 
+redisPort = 6379
+
 class controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
 
@@ -26,13 +28,23 @@ class controller(app_manager.RyuApp):
             ),
             cfg.StrOpt(
                 'ip', default='127.0.0.1', help = ('Controller IP')
+            ),
+            cfg.StrOpt(
+                'connectionmodel', default='equal', help = ('Switch-controller connection model')
+            ),
+            cfg.IntOpt(
+                'flowidletimeout', default='0', help = ('Switches flow entry idle timeout')
+            ),
+            cfg.IntOpt(
+                'flowhardtimeout', default='0', help = ('Switches flow entry hard timeout')
             )
             ]
         )
-
         #initializing redis DBs
-        self.routing_table = redis.Redis(host=self.CONF.ip, port=6379, db = 0)
-        self.master = redis.Redis(host=self.CONF.ip, port=6379, db = 1)
+        self.routing_table = redis.Redis(host=self.CONF.ip, port=redisPort, db = 0)
+        
+        if self.CONF.connectionmodel == 'master-slave':
+            self.master = redis.Redis(host=self.CONF.ip, port=redisPort, db = 1)
 
         #datapaths dictionary
         self.datapaths = {}
@@ -42,8 +54,9 @@ class controller(app_manager.RyuApp):
         self.logger.info("Controller port: %s",self.CONF.port)
         print("------------------------")
         
-        #start another thread
-        hub.spawn(self.monitorMaster)
+        if self.CONF.connectionmodel == 'master-slave':
+            #start another thread
+            hub.spawn(self.monitorMaster)
     
     #note when a MASTER controller is down
     def monitorMaster(self):
@@ -77,7 +90,7 @@ class controller(app_manager.RyuApp):
         datapath.send_msg(req)
 
     #add flow entry to the switch flow table
-    def addFlow(self, datapath, priority, match, actions):
+    def addFlow(self, datapath, priority, match, actions, idle_timeout=0, hard_timeout=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -85,7 +98,7 @@ class controller(app_manager.RyuApp):
                                              actions)]
 
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                match=match, instructions=inst)
+                                match=match, instructions=inst, idle_timeout=idle_timeout, hard_timeout=hard_timeout)
         datapath.send_msg(mod)
 
     #EVENT: SWITCH FEATURES
@@ -98,12 +111,15 @@ class controller(app_manager.RyuApp):
         #register new datapath
         self.datapaths[datapath.id] = datapath
 
-        #if there is no MASTER present
-        if int(self.master.hget("master","credits")) == 1:
-            self.selfElectMaster(datapath) #take MASTER role for this datapath
-        else: #else, take SLAVE role
-            self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
-        
+        if self.CONF.connectionmodel == 'master-slave':
+            #if there is no MASTER present
+            if int(self.master.hget("master","credits")) == 1:
+                self.selfElectMaster(datapath) #take MASTER role for this datapath
+            else: #else, take SLAVE role
+                self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
+        else:
+            self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_EQUAL)
+
         #table-miss flow entry
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
@@ -189,7 +205,7 @@ class controller(app_manager.RyuApp):
 
         dpid = datapath.id
 
-        #self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
+        self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
 
         #add to the routing table
         self.routing_table.hset(dpid, src, in_port)
@@ -204,7 +220,7 @@ class controller(app_manager.RyuApp):
 
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst, eth_src=src)
-            self.addFlow(datapath, 1, match, actions)
+            self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
