@@ -29,7 +29,6 @@ def monitorConnections(net, nControllers, ip, ports, master):
         for i in range(0,nControllers):
             controller = net.getNodeByName('c'+str(i))
             #if MASTER is down
-            #print(controller.isListening(ip,ports[i]))
             if controller.isListening(ip,ports[i])==False and int(master.hget("master","port"))==ports[i]:
                 freeCredits(master)
 
