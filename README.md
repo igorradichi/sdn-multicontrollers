@@ -30,16 +30,18 @@
 - description: single-switch topology (with 4 hosts), with automated controller creation and controller fault detection
 
   ```
-    sudo python3 myTopology.py topo.conf
+    sudo python3 network.py net.conf critical
   ```
-- ```myNetwork.py```
+- ```network.py```
   - Mininet network file
-- ```topo.conf```
+- ```net.conf```
   - config file for the network being initialized
   - must contain the IP address the switch should connect
   - must contain the number of controllers to be present
   - must contain the TCP of the first controller connection
     - the following ports will be added +1 and so on
+- ```critical```
+  - logger level (debug, info, output, warning, error, critical)
   
 ## Control layer
 ### Controller
@@ -48,10 +50,10 @@
 
   ```
   #Controller c0
-  ryu-manager --ofp-tcp-listen-port 6633 --wsapi-port 50000 --config-file c0.conf myController.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6633 --wsapi-port 50000 --config-file c0.conf controller.py ryu.app.ofctl_rest
 
   #Controller c1
-  ryu-manager --ofp-tcp-listen-port 6634 --wsapi-port 50001 --config-file c1.conf myController.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6634 --wsapi-port 50001 --config-file c1.conf controller.py ryu.app.ofctl_rest
 
   #...and so on
   ```
@@ -71,7 +73,8 @@
   - config file for the controller being initialized
   - must contain the IP and the TCP port it will be listening to
     - the TCP port should be the same as the one passed in the first argument
-- ```myController.py```
+  - auto configured when ```network.py``` runs
+- ```controller.py```
   - Ryu controller application file name
 - ```ryu.app.ofctl_rest``` 
   - Ryu built-in application, which enables REST interactions with the controller

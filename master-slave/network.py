@@ -1,3 +1,5 @@
+from concurrent.futures import thread
+import threading
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.log import setLogLevel
@@ -7,12 +9,29 @@ from time import sleep
 import redis
 import configparser
 import sys
+from threading import Thread
+import os
 
 #read config
-def read_config(file):
+def readConfig(file):
     config = configparser.ConfigParser()
     config.read(file)
     return config
+
+def freeCredits(master):
+
+    master.hset("master","credits",1)
+    master.hset("master","port",0)
+
+def monitorConnections(net, nControllers, ip, ports, master):
+    while True:
+        sleep(1)
+        for i in range(0,nControllers):
+            controller = net.getNodeByName('c'+str(i))
+            #if MASTER is down
+            #print(controller.isListening(ip,ports[i]))
+            if controller.isListening(ip,ports[i])==False and int(master.hget("master","port"))==ports[i]:
+                freeCredits(master)
 
 class MyTopo(Topo):
     def build(self):
@@ -28,20 +47,17 @@ class MyTopo(Topo):
         self.addLink(h3, s1)
         self.addLink(h4, s1)
 
-def free_credits(master):
-
-    master.hset("master","credits",1)
-    master.hset("master","port",0)
-
-
 if __name__ == '__main__':
+
+    os.system('cls||clear')
+    setLogLevel(sys.argv[2])
 
     #config file
     file = sys.argv[1]
-    config = read_config(file)
-    ip = config['DEFAULT']['IP']
-    controllersFirstPort = int(config['DEFAULT']['CONTROLLERSFIRSTPORT'])
-    nControllers = int(config['DEFAULT']['NCONTROLLERS'])
+    config = readConfig(file)
+    ip = config['DEFAULT']['ip']
+    controllersFirstPort = int(config['DEFAULT']['controllersFirstPort'])
+    nControllers = int(config['DEFAULT']['nControllers'])
 
     #initializing and flushing redis DBS
     routing_table = redis.Redis(host=ip, port=6379, db = 0)
@@ -49,9 +65,7 @@ if __name__ == '__main__':
 
     master = redis.Redis(host=ip, port=6379, db = 1)
     master.flushdb()
-    free_credits(master)
-
-    setLogLevel('output')
+    freeCredits(master)
     
     topo = MyTopo()
     net = Mininet(topo=topo,  build=False)
@@ -63,27 +77,31 @@ if __name__ == '__main__':
         ports.append(controllersFirstPort + i)
 
     #creating controllers
-    for i in range(0,len(ports)):
+    for i in range(0,nControllers):
         controller = RemoteController('c'+str(i),ip,ports[i])
         net.addController(controller)
+        print(controller.checkListening())
+    
+        config = configparser.ConfigParser()
+        config.set("DEFAULT","ip",ip)
+        config.set("DEFAULT","port",str(ports[i]))
 
+        with open(r"c"+str(i)+".conf",'w') as configfileObj:
+            config.write(configfileObj)
+            configfileObj.flush()
+            configfileObj.close()
+            
     net.build()
     net.start()
     
-
-    #pending: automate c0, c1, c2, ... conf files
-
-    #pending: implement multithreading
-    while True:
-        sleep(1)
-        print("------------------------")
-        print("Checking controllers connections...")
-        for i in range(0,len(ports)):
-            controller = net.getNodeByName('c'+str(i))
-            if controller.isListening(ip,ports[i])==False and int(master.hget("master","port"))==ports[i]:
-                free_credits(master)
-                print("------------------------")
-                print("MASTER DOWN")
+    #multithreading monitorConnections
+    thread = threading.Thread(target=monitorConnections,args=[net,nControllers,ip,ports,master])
+    thread.start()
 
     CLI(net)
+    
+    thread.join()
+
     net.stop()
+
+

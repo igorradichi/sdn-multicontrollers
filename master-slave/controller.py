@@ -12,34 +12,34 @@ from ryu import cfg
 from ryu.lib import hub
 from time import sleep
 
-class myController(app_manager.RyuApp):
+class controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(myController, self).__init__(*args, **kwargs)
+        super(controller, self).__init__(*args, **kwargs)
 
         #config file
         self.CONF = cfg.CONF
         self.CONF.register_opts([
             cfg.IntOpt(
-                'PORT', default=6633, help = ('Controller Port')
+                'port', default=6633, help = ('Controller Port')
             ),
             cfg.StrOpt(
-                'IP', default='127.0.0.1', help = ('Controller IP')
+                'ip', default='127.0.0.1', help = ('Controller IP')
             )
             ]
         )
 
         #initializing redis DBs
-        self.routing_table = redis.Redis(host=self.CONF.IP, port=6379, db = 0)
-        self.master = redis.Redis(host=self.CONF.IP, port=6379, db = 1)
+        self.routing_table = redis.Redis(host=self.CONF.ip, port=6379, db = 0)
+        self.master = redis.Redis(host=self.CONF.ip, port=6379, db = 1)
 
         #datapaths dictionary
         self.datapaths = {}
 
         #controller identity
         print("------------------------")
-        self.logger.info("Controller port: %s",self.CONF.PORT)
+        self.logger.info("Controller port: %s",self.CONF.port)
         print("------------------------")
         
         #start another thread
@@ -64,11 +64,11 @@ class myController(app_manager.RyuApp):
     def selfElectMaster(self,datapath):
         ofproto = datapath.ofproto
         self.master.hset("master","credits",0)
-        self.master.hset("master","port",self.CONF.PORT)
-        self.send_role_request(datapath,ofproto.OFPCR_ROLE_MASTER)
+        self.master.hset("master","port",self.CONF.port)
+        self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_MASTER)
 
     #generic role request
-    def send_role_request(self, datapath, role):
+    def sendRoleRequest(self, datapath, role):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
@@ -77,7 +77,7 @@ class myController(app_manager.RyuApp):
         datapath.send_msg(req)
 
     #add flow entry to the switch flow table
-    def add_flow(self, datapath, priority, match, actions):
+    def addFlow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -90,7 +90,7 @@ class myController(app_manager.RyuApp):
 
     #EVENT: SWITCH FEATURES
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
+    def switchFeaturesHandler(self, ev):
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -102,17 +102,17 @@ class myController(app_manager.RyuApp):
         if int(self.master.hget("master","credits")) == 1:
             self.selfElectMaster(datapath) #take MASTER role for this datapath
         else: #else, take SLAVE role
-            self.send_role_request(datapath,ofproto.OFPCR_ROLE_SLAVE)
+            self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
         
         #table-miss flow entry
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
+        self.addFlow(datapath, 0, match, actions)
 
     #EVENT: ROLE REPLY
     @set_ev_cls(ofp_event.EventOFPRoleReply, MAIN_DISPATCHER)
-    def role_reply_handler(self, ev):
+    def roleReplyHandler(self, ev):
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
@@ -137,7 +137,7 @@ class myController(app_manager.RyuApp):
     #useful when a controller takes MASTER role from another one
     #currently not used
     @set_ev_cls(ofp_event.EventOFPRoleStatus, MAIN_DISPATCHER)
-    def role_status_handler(self, ev):
+    def roleStatusHandler(self, ev):
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
@@ -169,7 +169,7 @@ class myController(app_manager.RyuApp):
 
     #EVENT: PACKET IN
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def _packet_in_handler(self, ev):
+    def packetInHandler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -189,7 +189,7 @@ class myController(app_manager.RyuApp):
 
         dpid = datapath.id
 
-        self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
+        #self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
 
         #add to the routing table
         self.routing_table.hset(dpid, src, in_port)
@@ -204,7 +204,7 @@ class myController(app_manager.RyuApp):
 
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst, eth_src=src)
-            self.add_flow(datapath, 1, match, actions)
+            self.addFlow(datapath, 1, match, actions)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
