@@ -1,3 +1,4 @@
+from ast import While
 from concurrent.futures import thread
 import threading
 from mininet.topo import Topo
@@ -12,76 +13,136 @@ import sys
 from threading import Thread
 import os
 
-redisPort = 6379
-
 class Conf:  
     def readConfig(self, file):
         config = configparser.ConfigParser()
         config.read(file)
         
+        self.netId = config['DEFAULT']['netId']
         self.ip = config['DEFAULT']['ip']
-        self.controllersFirstPort = int(config['DEFAULT']['controllersFirstPort'])
         self.nControllers = int(config['DEFAULT']['nControllers'])
         self.flowIdleTimeout = config['DEFAULT']['flowIdleTimeout']
         self.flowHardTimeout = config['DEFAULT']['flowHardTimeout']
-        
+
 class MyTopo(Topo):
     def build(self):
-        s1 = self.addSwitch('s1', failMode='secure')
+
+        networks = readRedisDatabase(conf.ip,redisPort,0)
+
+        s1 = self.addSwitch('s'+nextSwitchIndex(networks), failMode='secure')
+        s2 = self.addSwitch('s'+nextSwitchIndex(networks), failMode='secure')
         
-        h1 = self.addHost('h1', mac="00:00:00:00:00:01", ip="10.0.0.1/24")
-        h2 = self.addHost('h2', mac="00:00:00:00:00:02", ip="10.0.0.2/24")
-        h3 = self.addHost('h3', mac="00:00:00:00:00:03", ip="10.0.0.3/24")
-        h4 = self.addHost('h4', mac="00:00:00:00:00:04", ip="10.0.0.4/24")
+        h1 = self.addHost('h'+nextHostIndex(networks), mac="00:00:00:00:00:01", ip="10.0.0.1/24")
+        h2 = self.addHost('h'+nextHostIndex(networks), mac="00:00:00:00:00:02", ip="10.0.0.2/24")
+        h3 = self.addHost('h'+nextHostIndex(networks), mac="00:00:00:00:00:03", ip="10.0.0.3/24")
+        h4 = self.addHost('h'+nextHostIndex(networks), mac="00:00:00:00:00:04", ip="10.0.0.4/24")
         
         self.addLink(h1, s1)
         self.addLink(h2, s1)
-        self.addLink(h3, s1)
-        self.addLink(h4, s1)
+        self.addLink(h3, s2)
+        self.addLink(h4, s2)
+        self.addLink(s1, s2)
 
-def readAndFlushRedisDatabase(host,port,db):
+def readRedisDatabase(host,port,db,flush=False):
     r = redis.Redis(host, port, db)
-    r.flushdb()
+    if flush == True:
+        r.flushdb()
     return r
 
-def freeMasterCredits(master):
-    master.hset("master","credits",1)
-    master.hset("master","port",0)
+def freeMasterCredits(master,conf):
+    master.hset(conf.netId,"credits",1)
+    master.hset(conf.netId,"port",0)
 
-def monitorMasterConnection(net, nControllers, ip, ports, master):
-    while True:
-        sleep(1)
-        for i in range(0,nControllers):
-            controller = net.getNodeByName('c'+str(i))
-            #if MASTER is down
-            if controller.isListening(ip,ports[i])==False and int(master.hget("master","port"))==ports[i]:
-                freeMasterCredits(master)
+def monitorMasterConnection(conf, net, ports, master, controllers, myControllers):
+    nControllers=conf.nControllers
+    ip=conf.ip
+    #while True:
+    sleep(1)
+    for i in range(0,nControllers):                    
+        controller = net.getNodeByName(myControllers[i])
+        #check controllers connections
+        if controller.isListening(ip,ports[i]) == False:
+            print("-------------")
+            controllers.hset(str(ports[i]),"up",0)
+            if int(master.hget(conf.netId,"port"))==ports[i]: #if MASTER is down
+                freeMasterCredits(master,conf)
+        else:
+            controllers.hset(str(ports[i]),"up",1)
 
-def addControllers(conf, net):
+    raise MyException("An error in thread ")
+
+def addControllers(conf, net, controllers, networks):
     ports = []
+    myControllers = []
 
     #setting ports for each controller
     for i in range(0,conf.nControllers):
-        ports.append(conf.controllersFirstPort + i)
+        port = nextControllerPort(networks)
+        ports.append(port)
 
     #creating controllers
     for i in range(0,conf.nControllers):
-        controller = RemoteController('c'+str(i),conf.ip,ports[i])
+        index = nextControllerIndex(networks)
+        controller = RemoteController('c'+index,conf.ip,ports[i])
         net.addController(controller)
+        #networks.hset('c'+index,"netId",conf.netId)
+        myControllers.append('c'+index)
     
         config = configparser.ConfigParser()
+        config.set("DEFAULT","netId",conf.netId)
         config.set("DEFAULT","ip",conf.ip)
         config.set("DEFAULT","port",str(ports[i]))
         config.set("DEFAULT","connectionModel",connectionModel)
         config.set("DEFAULT","flowIdleTimeout",conf.flowIdleTimeout)
         config.set("DEFAULT","flowHardTimeout",conf.flowHardTimeout)
+        config.set("DEFAULT","redisPort",str(redisPort))
 
-        with open(r"c"+str(i)+".conf",'w') as configfileObj:
+        with open(r"c"+index+".conf",'w') as configfileObj:
             config.write(configfileObj)
             configfileObj.flush()
             configfileObj.close()
+        
+        controllers.hset(ports[i],"up",1)
     
-    return ports
+    return ports, myControllers
+
+def nextControllerPort(networks):
+    port = int(networks.hget("network","nextControllerPort"))
+    networks.hset("network","nextControllerPort",int(port)+1)
+    return port
+
+def nextControllerIndex(networks):
+    index = str(int(networks.hget("network","nextControllerIndex")))
+    networks.hset("network","nextControllerIndex",int(index)+1)
+    return index
+
+def nextSwitchIndex(networks):
+    index = str(int(networks.hget("network","nextSwitchIndex")))
+    networks.hset("network","nextSwitchIndex",int(index)+1)
+    return index
+
+def nextHostIndex(networks):
+    index = str(int(networks.hget("network","nextHostIndex")))
+    networks.hset("network","nextHostIndex",int(index)+1)
+    return index
+
+class MyException(Exception):
+    pass
+
+class MyThread(threading.Thread):
+    def run(self):
+       
+        self.exc = None           
+        while True:
+            try:
+                monitorMasterConnection(conf,net,ports,master,controllers,myControllers)
+            except BaseException as e:
+                self.exc = e
+       
+    def join(self):
+        threading.Thread.join(self)
+        if self.exc:
+            raise self.exc
 
 if __name__ == '__main__':
 
@@ -95,31 +156,40 @@ if __name__ == '__main__':
     conf = Conf()
     conf.readConfig(file)
 
+    redisConfig = configparser.ConfigParser()
+    redisConfig.read("init.conf")
+    redisPort = int(redisConfig['DEFAULT']['redisPort'])
+
+    networks = readRedisDatabase(conf.ip,redisPort,0)
+
     #initializing and flushing redis DBS
-    routing_table = readAndFlushRedisDatabase(conf.ip,redisPort,0)
-    master = readAndFlushRedisDatabase(conf.ip,redisPort,1)
-    
-    if connectionModel == "master-slave":
-        freeMasterCredits(master)
+    master = readRedisDatabase(conf.ip,redisPort,1)
+    controllers = readRedisDatabase(conf.ip,redisPort,2,flush=True)
+    routing_table = readRedisDatabase(conf.ip,redisPort,3,flush=True)
+
+    freeMasterCredits(master,conf)
     
     topo = MyTopo()
     net = Mininet(topo=topo,  build=False)
     
-    ports = addControllers(conf,net)
-
+    result = addControllers(conf,net,controllers,networks)
+    ports = result[0]
+    myControllers = result[1]
+    
     net.build()
     net.start()
     
-    if connectionModel == "master-slave":
-        #multithreading monitorConnections
-        thread = threading.Thread(target=monitorMasterConnection,args=[net,conf.nControllers,conf.ip,ports,master])
-        thread.start()
+    #multithreading monitorConnections
+    t = MyThread(target=monitorMasterConnection,args=[conf,net,ports,master,controllers,myControllers])
+    t.start()
+    #thread = threading.Thread(target=monitorMasterConnection,args=[conf,net,ports,master,controllers,myControllers])
+    #thread.start()
 
-        CLI(net)
-        
-        thread.join()
-    else:
-        CLI(net)
+    CLI(net)
+    try:
+        t.join()
+    except Exception as e:
+        print("thread error:", e)
 
     net.stop()
 

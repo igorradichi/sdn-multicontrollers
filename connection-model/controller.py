@@ -12,8 +12,6 @@ from ryu import cfg
 from ryu.lib import hub
 from time import sleep
 
-redisPort = 6379
-
 class controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
 
@@ -23,6 +21,9 @@ class controller(app_manager.RyuApp):
         #config file
         self.CONF = cfg.CONF
         self.CONF.register_opts([
+            cfg.IntOpt(
+                'netid', default=1, help = ('Network Id')
+            ),
             cfg.IntOpt(
                 'port', default=6633, help = ('Controller Port')
             ),
@@ -37,14 +38,17 @@ class controller(app_manager.RyuApp):
             ),
             cfg.IntOpt(
                 'flowhardtimeout', default='0', help = ('Switches flow entry hard timeout')
+            ),
+            cfg.IntOpt(
+                'redisport', default='6379', help = ('Redis server port')
             )
             ]
         )
         #initializing redis DBs
-        self.routing_table = redis.Redis(host=self.CONF.ip, port=redisPort, db = 0)
+        self.routing_table = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3)
         
         if self.CONF.connectionmodel == 'master-slave':
-            self.master = redis.Redis(host=self.CONF.ip, port=redisPort, db = 1)
+            self.master = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 1)
 
         #datapaths dictionary
         self.datapaths = {}
@@ -53,7 +57,9 @@ class controller(app_manager.RyuApp):
         print("------------------------")
         self.logger.info("Controller port: %s",self.CONF.port)
         print("------------------------")
-        
+        self.logger.info("Network Id: %s",self.CONF.netid)
+        print("------------------------")
+
         if self.CONF.connectionmodel == 'master-slave':
             #start another thread
             hub.spawn(self.monitorMaster)
@@ -65,7 +71,7 @@ class controller(app_manager.RyuApp):
         print("------------------------")
         while True:
             hub.sleep(1)
-            if int(self.master.hget("master","credits"))==1: #if no MASTER is present
+            if int(self.master.hget(self.CONF.netid,"credits"))==1: #if no MASTER is present
                 print("------------------------")
                 self.logger.info("NO MASTER PRESENT")
                 print("------------------------")
@@ -76,8 +82,8 @@ class controller(app_manager.RyuApp):
     #send MASTER role request to the datapath
     def selfElectMaster(self,datapath):
         ofproto = datapath.ofproto
-        self.master.hset("master","credits",0)
-        self.master.hset("master","port",self.CONF.port)
+        self.master.hset(self.CONF.netid,"credits",0)
+        self.master.hset(self.CONF.netid,"port",self.CONF.port)
         self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_MASTER)
 
     #generic role request
@@ -113,7 +119,7 @@ class controller(app_manager.RyuApp):
 
         if self.CONF.connectionmodel == 'master-slave':
             #if there is no MASTER present
-            if int(self.master.hget("master","credits")) == 1:
+            if int(self.master.hget(self.CONF.netid,"credits")) == 1 or int(self.master.hget(self.CONF.netid,"port"))==self.CONF.port:
                 self.selfElectMaster(datapath) #take MASTER role for this datapath
             else: #else, take SLAVE role
                 self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
@@ -145,13 +151,12 @@ class controller(app_manager.RyuApp):
             role = 'unknown'
 
         self.logger.info('OFPRoleReply received: '
-                        'role=%s short_id=%d, generation_id=%d\n',
-                        role, msg.short_id, msg.generation_id)
+                        'role=%s datapath=%d',
+                        role, dp.id)
 
 
     #EVENT: STATUS CHANGE ORDER FROM THE SWITCH
     #useful when a controller takes MASTER role from another one
-    #currently not used
     @set_ev_cls(ofp_event.EventOFPRoleStatus, MAIN_DISPATCHER)
     def roleStatusHandler(self, ev):
         msg = ev.msg
@@ -178,9 +183,8 @@ class controller(app_manager.RyuApp):
         else:
             reason = 'unknown'
 
-        self.logger.info('OFPRoleStatus received: role=%s reason=%s '
-                        'generation_id=%d properties=%s', role, reason,
-                        msg.generation_id, repr(msg.properties))
+        self.logger.info('OFPRoleStatus received: role=%s reason=%s datapath=%s',
+                        role, reason, dp.id)
 
 
     #EVENT: PACKET IN
