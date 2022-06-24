@@ -44,8 +44,9 @@ class controller(app_manager.RyuApp):
             )
             ]
         )
+        
         #initializing redis DBs
-        self.routing_table = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3)
+        self.routingTable = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3)
         
         if self.CONF.connectionmodel == 'master-slave':
             self.master = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 1)
@@ -212,11 +213,11 @@ class controller(app_manager.RyuApp):
         self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
 
         #add to the routing table
-        self.routing_table.hset(dpid, src, in_port)
+        self.routingTable.hset(dpid, src, in_port)
 
         #if the table already has the info
-        if self.routing_table.hexists(dpid,dst):
-            out_port = int(self.routing_table.hget(dpid,dst)) #use the info
+        if self.routingTable.hexists(dpid,dst):
+            out_port = int(self.routingTable.hget(dpid,dst)) #use the info
         else: #else, FLOOD all ports
             out_port = ofproto.OFPP_FLOOD
         

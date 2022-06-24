@@ -28,29 +28,30 @@
 
 ## Pendências
 
-- Reorganizar código do network.py, ficou bagunçado de novo. Também rever se dá pra enxugar algo das threads.
-- Deixar endereços MAC em função do hostIndex ('00:00:00:00:00:0'+index)
-- Tabela de controladores exclusiva (que mostra o up), de acordo com o netId
-- Tabela de roteamento exclusiva, de acordo com o netId
-- Implementar auto-delete de todos os c0,c1,c2.conf etc dentro do init.py
 - Implementar modelos de arquitetura
 
 ## Initialization
-- description: resets some Redis databases
+- description: initialization program
 - must be run every time, before starting the other layers (in this order):
   - Initizalization -> Infrastructure -> Control -> Application
-- tip: always run ```sudo mn -c``` first, just in case
 
   ```
   sudo python3 init.py
   ```
+- ```init.py```
+  - Initialization file (calls ```init.conf``` internally)
+- ```init.conf```
+  - config file for initialization
+  - ```ip``` must contain the IP address for the Redis server
+  - ```redisPort``` must contain the Redis Server port
+  - ```controllersFirstPort``` must contain the port for the first controller created
 
 ## Infrastructure layer
 ### Network
-- description: single-switch topology (with 4 hosts), with automated controller creation and controller fault detection
+- description: n-switch-m-hosts linear topology, with automated switch and hosts creation, automated controller creation and controller fault detection
 
   ```
-  sudo python3 network.py net1.conf master-slave info
+  sudo python3 network.py net1.conf info
   ```
 - ```network.py```
   - Mininet network file
@@ -58,31 +59,33 @@
   - config file for the network being initialized
   - ```netId``` must contain the network Id
   - ```ip``` must contain the IP address the switch should connect
+  - ```connectionModel``` must contain the switch-controller connection model (either ```master-slave``` or ```equal```)
   - ```nControllers``` must contain the number of controllers to be present
+  - ```nSwitches``` must contain the number of switches to be present (each switch will connect to its neighbor - linear model)
+  - ```nHostsPerSwitch``` must contain the number of hosts per switch
   - ```flowIdleTimeout``` must contain the switches' flow entries idle timeout
   - ```flowHardTimeout``` must contain the switches' flow entries hard timeout
-- ```master-slave```
-  - switch-controller connection model (either ```master-slave``` or ```equal```)
-- ```critical```
+
+- ```info```
   - logger level (debug, info, output, warning, error, critical)
   
 ## Control layer
 ### Controller
 
-- description: master-slave learning controller for L2 Open vSwitch
+- description: learning controller for L2 Open vSwitch
 
   ```
-  #Controller c0
-  ryu-manager --ofp-tcp-listen-port 6633 --wsapi-port 50000 --config-file c0.conf controller.py ryu.app.ofctl_rest
-
   #Controller c1
-  ryu-manager --ofp-tcp-listen-port 6634 --wsapi-port 50001 --config-file c1.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6001 --wsapi-port 50001 --config-file c0.conf controller.py ryu.app.ofctl_rest
 
   #Controller c2
-  ryu-manager --ofp-tcp-listen-port 6635 --wsapi-port 50002 --config-file c2.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6002 --wsapi-port 50002 --config-file c1.conf controller.py ryu.app.ofctl_rest
 
   #Controller c3
-  ryu-manager --ofp-tcp-listen-port 6636 --wsapi-port 50003 --config-file c3.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6003 --wsapi-port 50003 --config-file c2.conf controller.py ryu.app.ofctl_rest
+
+  #Controller c4
+  ryu-manager --ofp-tcp-listen-port 6003 --wsapi-port 50004 --config-file c3.conf controller.py ryu.app.ofctl_rest
 
   #...and so on
   ```
