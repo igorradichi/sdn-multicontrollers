@@ -60,6 +60,7 @@
   - ```netId``` must contain the network Id
   - ```ip``` must contain the IP address the switch should connect
   - ```connectionModel``` must contain the switch-controller connection model (either ```master-slave``` or ```equal```)
+  - ```masterSlaveLoadBalancingTime``` must contain the time in seconds for the network to balance its controllers
   - ```nControllers``` must contain the number of controllers to be present
   - ```nSwitches``` must contain the number of switches to be present (each switch will connect to its neighbor - linear model)
   - ```nHostsPerSwitch``` must contain the number of hosts per switch
@@ -76,16 +77,16 @@
 
   ```
   #Controller c1
-  ryu-manager --ofp-tcp-listen-port 6001 --wsapi-port 50001 --config-file c0.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6001 --wsapi-port 50001 --config-file c1.conf controller.py ryu.app.ofctl_rest
 
   #Controller c2
-  ryu-manager --ofp-tcp-listen-port 6002 --wsapi-port 50002 --config-file c1.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6002 --wsapi-port 50002 --config-file c2.conf controller.py ryu.app.ofctl_rest
 
   #Controller c3
-  ryu-manager --ofp-tcp-listen-port 6003 --wsapi-port 50003 --config-file c2.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6003 --wsapi-port 50003 --config-file c3.conf controller.py ryu.app.ofctl_rest
 
   #Controller c4
-  ryu-manager --ofp-tcp-listen-port 6003 --wsapi-port 50004 --config-file c3.conf controller.py ryu.app.ofctl_rest
+  ryu-manager --ofp-tcp-listen-port 6004 --wsapi-port 50004 --config-file c4.conf controller.py ryu.app.ofctl_rest
 
   #...and so on
   ```
@@ -110,9 +111,9 @@
     - the TCP port should be the same as the one passed in the first argument
   - auto configured when ```network.py``` runs
   - ```connectionmodel``` must contain the switch-controller connection model  (either ```master-slave``` or ```equal```)
-  - ```flowIdleTimeout``` must contain the switches' flow entries idle timeout
-  - ```flowHardTimeout``` must contain the switches' flow entries hard timeout
-  - ```redisPort``` must contain the Redis Server port
+  - ```flowidletimeout``` must contain the switches' flow entries idle timeout
+  - ```flowhardtimeout``` must contain the switches' flow entries hard timeout
+  - ```redisport``` must contain the Redis Server port
 - ```controller.py```
   - Ryu controller application file name
 - ```ryu.app.ofctl_rest``` 
