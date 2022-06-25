@@ -1,0 +1,15 @@
+[
+    {
+        "netId": 1,
+        "connections":[
+            {
+                "controllerPort": 6001,
+                "up": 1
+            },
+            {
+                "controllerPort": 6002,
+                "up": 0
+            }
+        ]
+    }
+]

@@ -1,0 +1,23 @@
+[
+    {
+        "netId": 1,
+        "cluster":[
+            {
+                "field": "masterCredits",
+                "credits": 0
+            },
+            {
+                "field": "currentMaster",
+                "controllerPort": 6001
+            },
+            {
+                "controllerPort": 6001,
+                "packetInCounter": 78
+            },
+            {
+                "controllerPort": 6002,
+                "packetInCounter": 154
+            }
+        ]
+    }
+]

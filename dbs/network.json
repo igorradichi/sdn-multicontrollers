@@ -1,0 +1,23 @@
+[
+    {
+        "key": "network",
+        "network":[
+            {
+                "field": "nextControllerPort",
+                "controllerPort": 6005
+            },
+            {
+                "field": "nextControllerIndex",
+                "index": 5
+            },
+            {
+                "field": "nextSwitchIndex",
+                "index": 5
+            },
+            {
+                "field": "nextHostIndex",
+                "index": 9
+            }
+        ]
+    }
+]

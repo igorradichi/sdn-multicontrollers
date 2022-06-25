@@ -1,0 +1,15 @@
+[
+    {
+        "switchDatapath": 1,
+        "routingTable":[
+            {
+                "eth_add": "00:00:00:00:00:02",
+                "port": 2
+            },
+            {
+                "eth_add": "00:00:00:00:00:03",
+                "port": 3
+            }
+        ]
+    }
+]
