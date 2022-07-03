@@ -33,7 +33,7 @@
 ## Initialization
 - description: initialization program
 - must be run every time, before starting the other layers (in this order):
-  - Initizalization -> Infrastructure -> Control -> Application
+  - Initialization -> Infrastructure -> Control -> Application
 
   ```
   sudo python3 init.py
@@ -42,13 +42,15 @@
   - Initialization file (calls ```init.conf``` internally)
 - ```init.conf```
   - config file for initialization
-  - ```ip``` must contain the IP address for the Redis server
-  - ```redisPort``` must contain the Redis Server port
-  - ```controllersFirstPort``` must contain the port for the first controller created
+  - ```ip``` IP address for the Redis server
+  - ```redisPort``` Redis Server port
+  - ```controllersFirstPort``` port for the first controller created
+  - ```nControllersPerNetwork``` number of initial controllers per network
+  - ```nNetworks``` number of networks
 
 ## Infrastructure layer
 ### Network
-- description: n-switch-m-hosts linear topology, with automated switch and hosts creation, automated controller creation and controller fault detection
+- description: n-switch-m-hosts linear topology, with automated switch and hosts creation, automated controller creation, controller fault detection and load balancing
 
   ```
   sudo python3 network.py net1.conf info
@@ -57,15 +59,14 @@
   - Mininet network file
 - ```net1.conf```
   - config file for the network being initialized
-  - ```netId``` must contain the network Id
-  - ```ip``` must contain the IP address the switch should connect
-  - ```connectionModel``` must contain the switch-controller connection model (either ```master-slave``` or ```equal```)
-  - ```masterSlaveLoadBalancingTime``` must contain the time in seconds for the network to balance its controllers
-  - ```nControllers``` must contain the number of controllers to be present
-  - ```nSwitches``` must contain the number of switches to be present (each switch will connect to its neighbor - linear model)
-  - ```nHostsPerSwitch``` must contain the number of hosts per switch
-  - ```flowIdleTimeout``` must contain the switches' flow entries idle timeout
-  - ```flowHardTimeout``` must contain the switches' flow entries hard timeout
+  - ```netId``` network Id
+  - ```ip``` IP address the switches should connect
+  - ```connectionModel``` switch-controller connection model (either ```master-slave``` or ```equal```)
+  - ```masterSlaveLoadBalancingTime``` time in seconds for the network to recurrently balance its controllers load (set to ```0``` if not wanted)
+  - ```nSwitches``` number of switches to be present (each switch will connect to its neighbor - linear model)
+  - ```nHostsPerSwitch``` number of hosts per switch
+  - ```flowIdleTimeout``` switches' flow entries idle timeout
+  - ```flowHardTimeout``` switches' flow entries hard timeout
 
 - ```info```
   - logger level (debug, info, output, warning, error, critical)
@@ -103,17 +104,17 @@
     curl -X GET http://localhost:8080/stats/switches | jq
     ```
 - ```--config-file <FILE>```
-  - config file for the controller being initialized
+  - config file for the controller being initialized (auto configured when ```network.py``` runs)
   - ```net1.conf```
   - config file for the network being initialized
-  - ```ip``` must contain the IP address of the connection
-  - ```port``` must contain TCP port it should listen to
-    - the TCP port should be the same as the one passed in the first argument
-  - auto configured when ```network.py``` runs
-  - ```connectionmodel``` must contain the switch-controller connection model  (either ```master-slave``` or ```equal```)
-  - ```flowidletimeout``` must contain the switches' flow entries idle timeout
-  - ```flowhardtimeout``` must contain the switches' flow entries hard timeout
-  - ```redisport``` must contain the Redis Server port
+  - ```name``` controller name
+  - ```ip``` IP address for the connection
+  - ```port``` listening TCP port
+    - the TCP port should be the same as the one passed in the first terminal argument
+  - ```connectionmodel``` switch-controller connection model  (either ```master-slave``` or ```equal```)
+  - ```flowidletimeout``` switches' flow entries idle timeout
+  - ```flowhardtimeout``` switches' flow entries hard timeout
+  - ```redisport``` Redis Server port
 - ```controller.py```
   - Ryu controller application file name
 - ```ryu.app.ofctl_rest``` 
