@@ -1,0 +1,29 @@
+[
+    {
+        "netId": 1,
+        "controllers":[
+            {
+                "controller": "c1",
+                "stats": {
+                    "port": 6001,
+                    "reqs": 34,
+                    "connected": 0
+                }
+            },
+            {
+                "controller": "c2",
+                "stats": {
+                    "port": 6002,
+                    "reqs": 51,
+                    "connected": 1
+                }
+            }
+        ],
+        "datapaths":[
+            1,
+            2
+        ],
+        "masterCredits": 0,
+        "currentMaster": 6002
+    }
+]

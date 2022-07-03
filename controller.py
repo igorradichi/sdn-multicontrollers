@@ -11,18 +11,18 @@ import redis
 from ryu import cfg
 from ryu.lib import hub
 from time import sleep
+import ast
 
 class controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(controller, self).__init__(*args, **kwargs)
-
         #config file
         self.CONF = cfg.CONF
         self.CONF.register_opts([
-            cfg.IntOpt(
-                'netid', default=1, help = ('Network Id')
+            cfg.StrOpt(
+                'name', default='c1', help = ('Controller name')
             ),
             cfg.IntOpt(
                 'port', default=6001, help = ('Controller Port')
@@ -46,51 +46,70 @@ class controller(app_manager.RyuApp):
         )
         
         #initializing redis DBs
-        self.routingTable = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3)
-        self.cluster = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 1)
+        self.routingTable = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3,decode_responses=True)
+        self.networks = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 1,decode_responses=True)
 
         #datapaths dictionary
         self.datapaths = {}
 
         #controller identity
         self.logger.info("------------------------")
-        self.logger.info("Controller port: %s",self.CONF.port)
+        self.logger.info("Controller name: %s",self.CONF.name)
         self.logger.info("------------------------")
-        self.logger.info("Network Id: %s",self.CONF.netid)
+        self.logger.info("Controller port: %s",self.CONF.port)
         self.logger.info("------------------------")
 
         if self.CONF.connectionmodel == 'master-slave':
-            #start another thread
             hub.spawn(self.monitorMaster)
     
-    #note when a MASTER controller is down
+    #monitor mastery availability for each known network
     def monitorMaster(self):
         self.logger.info("------------------------")
         self.logger.info("Master is being monitored...")
         self.logger.info("------------------------")
         while True:
             hub.sleep(1)
-            if int(self.cluster.hget(self.CONF.netid,"masterCredits"))==1: #if no MASTER is present
-                self.logger.info("------------------------")
-                self.logger.info("No MASTER present")
-                self.logger.info("------------------------")
 
-                if self.cluster.hget(self.CONF.netid,"currentMaster") == None:
-                    self.logger.info("Requesting master role...")
-                    for datapath in self.datapaths.values():
-                        self.selfElectMaster(datapath) #take MASTER role for each datapath
-                else:
-                    if int(self.CONF.port) == int(self.cluster.hget(self.CONF.netid,"currentMaster")):
+            networks = self.datapaths
+
+            #for each network that has already communicated with this controller
+            for network in networks:
+                
+                #if no master is present
+                if int(self.networks.hget(network,"masterCredits"))==1:
+                    self.logger.info("------------------------")
+                    self.logger.info("No MASTER present")
+                    self.logger.info("------------------------")
+
+                    #if no master is awaited
+                    if self.networks.hget(network,"currentMaster") == None:
                         self.logger.info("Requesting master role...")
-                        for datapath in self.datapaths.values():
-                            self.selfElectMaster(datapath) #take MASTER role for each datapath
+                        for d in self.datapaths[network]: #take MASTER role for each datapath
+                            self.selfElectMaster(network,d["datapath"])
+                    else:
+                        #if this controller is the master awaited
+                        if int(self.CONF.port) == int(self.networks.hget(network,"currentMaster")):
+                            self.logger.info("Requesting master role...")
+                            for d in self.datapaths[network]: #take MASTER role for each datapath
+                                self.selfElectMaster(network,d["datapath"])
+
+    #get networkd ID by the switch datapath ID
+    def getNetworkIdBySwitchDatapathId(self, datapath):
+        networks = self.networks.keys()
+        for network in networks:
+            if self.networks.hget(network,"datapaths") != None:
+                c = self.networks.hget(network,"datapaths")
+                dps = ast.literal_eval(c)
+                if str(datapath) in dps:
+                    return network
+        return None
 
     #send MASTER role request to the datapath
-    def selfElectMaster(self,datapath):
+    def selfElectMaster(self,network,datapath):
         ofproto = datapath.ofproto
-        
-        self.cluster.hset(self.CONF.netid,"masterCredits",0)
-        self.cluster.hset(self.CONF.netid,"currentMaster",self.CONF.port)
+   
+        self.networks.hset(network,"masterCredits",0)
+        self.networks.hset(network,"currentMaster",self.CONF.port)
         self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_MASTER)
 
     #generic role request
@@ -121,13 +140,21 @@ class controller(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         
-        #register new datapath
-        self.datapaths[datapath.id] = datapath
+        networkId = self.getNetworkIdBySwitchDatapathId(datapath.id)
 
+        #register new datapath
+        if networkId != None:
+            if len(self.datapaths) > 0:
+                l = list(self.datapaths[networkId])
+            else:
+                l = []
+            l.append({"datapathId": datapath.id, "datapath": datapath})
+            self.datapaths[networkId] = l
+       
         if self.CONF.connectionmodel == 'master-slave':
             #if there is no MASTER present
-            if int(self.cluster.hget(self.CONF.netid,"masterCredits")) == 1 or int(self.cluster.hget(self.CONF.netid,"currentMaster"))==self.CONF.port:
-                self.selfElectMaster(datapath) #take MASTER role for this datapath
+            if int(self.networks.hget(networkId,"masterCredits")) == 1 or int(self.networks.hget(networkId,"currentMaster"))==self.CONF.port:
+                self.selfElectMaster(networkId,datapath) #take MASTER role for this datapath
             else: #else, take SLAVE role
                 self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
         else:
@@ -163,7 +190,6 @@ class controller(app_manager.RyuApp):
 
 
     #EVENT: STATUS CHANGE ORDER FROM THE SWITCH
-    #useful when a controller takes MASTER role from another one
     @set_ev_cls(ofp_event.EventOFPRoleStatus, MAIN_DISPATCHER)
     def roleStatusHandler(self, ev):
         msg = ev.msg
@@ -193,17 +219,21 @@ class controller(app_manager.RyuApp):
         self.logger.info('OFPRoleStatus received: role=%s reason=%s datapath=%s',
                         role, reason, dp.id)
 
-
     #EVENT: PACKET IN
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packetInHandler(self, ev):
-
-        self.cluster.hincrby(self.CONF.netid,self.CONF.port,1)
 
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
+
+        #increment reqs count for that network
+        networkId = self.getNetworkIdBySwitchDatapathId(datapath.id)
+        c = self.networks.hgetall(networkId)
+        d = ast.literal_eval(c[self.CONF.name])
+        d["reqs"] += 1
+        self.networks.hset(networkId,self.CONF.name,str(d))
 
         in_port = msg.match['in_port']
         

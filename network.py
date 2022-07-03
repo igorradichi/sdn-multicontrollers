@@ -13,6 +13,7 @@ import sys
 from threading import Thread
 import os
 import random
+import ast
 
 
 class Conf:  
@@ -26,7 +27,6 @@ class Conf:
         self.ip = config['DEFAULT']['ip']
         self.connectionModel = config['DEFAULT']['connectionModel']
         self.masterSlaveLoadBalancingTime = int(config['DEFAULT']['masterSlaveLoadBalancingTime'])
-        self.nControllers = int(config['DEFAULT']['nControllers'])
         self.nSwitches = int(config['DEFAULT']['nSwitches'])
         self.nHostsPerSwitch = int(config['DEFAULT']['nHostsPerSwitch'])
         self.flowIdleTimeout = config['DEFAULT']['flowIdleTimeout']
@@ -34,16 +34,22 @@ class Conf:
 
 class MyTopo(Topo):
 
-    def build(self, nSwitches, nHostsPerSwitch):
+    def build(self, nSwitches, nHostsPerSwitch, netId):
 
-        networks = readRedisDatabase(conf.ip,redisPort,0)
+        networks = readRedisDatabase(conf.ip,conf.redisPort,1)
+        namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
+        datapaths = []
 
         for s in range(1,nSwitches+1):
-            sw = self.addSwitch('s'+str(nextElementIndex(networks,"nextSwitchIndex")), failMode='secure')
+            switchIndex = str(nextElementIndex(namespaces,"nextSwitchIndex"))
+            sw = self.addSwitch('s'+switchIndex, failMode='secure')
+            datapaths.append(switchIndex)
             for h in range(1,nHostsPerSwitch+1):
-                hostIndex = str(nextElementIndex(networks,"nextHostIndex"))
+                hostIndex = str(nextElementIndex(namespaces,"nextHostIndex"))
                 ht = self.addHost('h'+hostIndex, mac=nexthostMAC(hostIndex))
                 self.addLink(sw,ht)
+
+        networks.hset(netId,"datapaths",str(datapaths))
 
 class MyException(Exception):
     pass
@@ -54,7 +60,7 @@ class ThreadMonitorControllersConnection(threading.Thread):
         self.exc = None           
         while True:
             try:
-                monitorControllers(conf,net,ports,cluster,connections,myControllers)
+                monitorControllers(conf,networks,controllers)
             except BaseException as e:
                 self.exc = e
        
@@ -69,7 +75,7 @@ class ThreadMasterLoadBalancing(threading.Thread):
         self.exc = None           
         while True:
             try:
-                masterLoadBalancing(cluster,conf,ports,connections)
+                masterLoadBalancing(networks,conf,controllers)
             except BaseException as e:
                 self.exc = e
        
@@ -80,15 +86,15 @@ class ThreadMasterLoadBalancing(threading.Thread):
 
 def readRedisDatabase(host,port,db,flush=False):
 
-    r = redis.Redis(host, port, db)
+    r = redis.Redis(host, port, db, decode_responses=True)
 
     if flush == True:
         r.flushdb()
     return r
 
-def nextElementIndex(networks,element):
-    index = int(networks.hget("network",element))
-    networks.hincrby("network",element,1)
+def nextElementIndex(namespaces,element):
+    index = int(namespaces.get(element))
+    namespaces.incrby(element,1)
     return index
 
 def nexthostMAC(nextHostIndex):
@@ -105,9 +111,9 @@ def nexthostMAC(nextHostIndex):
     mac = s+hostHex
     return ':'.join(mac[i:i+2] for i in range(0, len(mac), 2))
 
-def addSwitchToSwitchLinks(net,networks,nSwitches):
+def addSwitchToSwitchLinks(net,namespaces,nSwitches):
 
-    lastSwitch = int(networks.hget("network","nextSwitchIndex"))-1
+    lastSwitch = int(namespaces.get("nextSwitchIndex"))-1
 
     sws = []
     for s in range(lastSwitch-nSwitches+1,lastSwitch+1):
@@ -116,108 +122,123 @@ def addSwitchToSwitchLinks(net,networks,nSwitches):
         net.addLink(sws[s],sws[s+1])
     return net
 
-def addControllers(conf,net,networks,connectionModel,connections,cluster):
+def addController(net,controllerName,controllerPort,conf):
     
-    ports = []
-    myControllers = []
+    controller = RemoteController(controllerName,conf.ip,controllerPort)
+    net.addController(controller)
 
-    #setting ports for each controller
-    for i in range(0,conf.nControllers):
-        port = nextElementIndex(networks,"nextControllerPort")
-        ports.append(port)
-        connections.hset(conf.netId,port,0)
-        cluster.hset(conf.netId,port,0)
+    #create config file
+    config = configparser.ConfigParser()
+    config.set("DEFAULT","name",controllerName)
+    config.set("DEFAULT","ip",conf.ip)
+    config.set("DEFAULT","port",str(controllerPort))
+    config.set("DEFAULT","connectionModel",conf.connectionModel)
+    config.set("DEFAULT","flowIdleTimeout",conf.flowIdleTimeout)
+    config.set("DEFAULT","flowHardTimeout",conf.flowHardTimeout)
+    config.set("DEFAULT","redisPort",str(conf.redisPort))
 
-    for i in range(0,conf.nControllers):
+    with open(r""+controllerName+".conf",'w') as configfileObj:
+        config.write(configfileObj)
+        configfileObj.flush()
+        configfileObj.close()
 
-        controllerIndex = str(nextElementIndex(networks,"nextControllerIndex"))
-        
-        #create and add controller
-        controller = RemoteController('c'+controllerIndex,conf.ip,ports[i])
-        net.addController(controller)
-        myControllers.append('c'+controllerIndex)
-    
-        #create config file
-        config = configparser.ConfigParser()
-        config.set("DEFAULT","netId",conf.netId)
-        config.set("DEFAULT","ip",conf.ip)
-        config.set("DEFAULT","port",str(ports[i]))
-        config.set("DEFAULT","connectionModel",connectionModel)
-        config.set("DEFAULT","flowIdleTimeout",conf.flowIdleTimeout)
-        config.set("DEFAULT","flowHardTimeout",conf.flowHardTimeout)
-        config.set("DEFAULT","redisPort",str(redisPort))
-
-        with open(r"c"+controllerIndex+".conf",'w') as configfileObj:
-            config.write(configfileObj)
-            configfileObj.flush()
-            configfileObj.close()
-
-    return ports, myControllers
-
-def electNewMaster(cluster,conf,ports,connections):
+def electNewMaster(networks,conf,allControllers):
 
     availableControllers = []
     reqs = []
+    ports = []
 
-    for port in ports:
-        if int(connections.hget(conf.netId,port)) == 1:
-            availableControllers.append(port)
-            reqs.append(int(cluster.hget(conf.netId,port)))
 
-    if len(availableControllers) > 0:     
-                  
-        if cluster.hget(conf.netId,"currentMaster") == None:
-            lastMaster = random.choice(ports)
+    #aggregate controllers status for that network
+    c = networks.hgetall(conf.netId)
+    for controller in c:
+        if controller in allControllers:
+            d = ast.literal_eval(c[controller])
+            if int(d["connected"]) == 1:
+                availableControllers.append(controller)
+                reqs.append(int(d["reqs"]))
+                ports.append(int(d["port"]))
+    
+    #if there is a least one controller available
+    if len(availableControllers) > 0: 
+
+        #get the last MASTER
+        if networks.hget(conf.netId,"currentMaster") == None:
+            lastMaster = random.choice(ports) #choose any
         else:
-            lastMaster = int(cluster.hget(conf.netId,"currentMaster"))
+            lastMaster = int(networks.hget(conf.netId,"currentMaster"))
         
-        nextMaster = availableControllers[reqs.index(min(reqs))] #less used is the next master
+        #elect the next MASTER (based on least amount of reqs)
+        nextMaster = int(ports[reqs.index(min(reqs))])
 
-        cluster.hset(conf.netId,"currentMaster",nextMaster)
+        #set the new MASTER as current MASTER
+        networks.hset(conf.netId,"currentMaster",nextMaster)
 
-        if lastMaster != nextMaster: #if the master has changed, tell the cluster there is room
-                                     #for a new master
+        #if there has been a change in mastery
+        if lastMaster != nextMaster:
             print("-------------")
             print("Electing new MASTER...")
             print("Available controllers: ",availableControllers)
-            print(nextMaster,"elected as MASTER")
+            print(availableControllers[ports.index(nextMaster)],"elected as MASTER")
             print("-------------")
-            freeMaster(cluster,conf)
-        
-    else:
-        cluster.hdel(conf.netId,"currentMaster")
-        freeMaster(cluster,conf)
-        
-def freeMaster(cluster,conf):
-    cluster.hset(conf.netId,"masterCredits",1)
+            freeMaster(networks,conf)
+    else: #if there were no controllers available
+        networks.hdel(conf.netId,"currentMaster")
+        freeMaster(networks,conf)
 
-def masterLoadBalancing(master,conf,ports,connections):
+def freeMaster(networks,conf):
+    networks.hset(conf.netId,"masterCredits",1)
 
-    sleep(conf.masterSlaveLoadBalancingTime)
-    electNewMaster(cluster,conf,ports,connections)
+def monitorControllers(conf,networks,controllers):
+
+    sleep(1)
+
+    allControllers = controllers.keys()
+
+    myControllers = {}
+
+    #get controllers known by that network
+    c = networks.hgetall(conf.netId)
+    for controller in c:
+        if controller in allControllers:
+            d = ast.literal_eval(c[controller])
+            myControllers[controller] = int(d["port"])
+            
+    nControllers = len(myControllers)
+    ip=conf.ip
+
+    #monitor each known controller
+    for i in range(0,nControllers):
+        controllerName = list(myControllers.keys())[i]
+        controller = net.getNodeByName(controllerName)
+
+        c = networks.hgetall(conf.netId)
+        d = ast.literal_eval(c[controllerName])
+        
+        #check controllers connections
+        if controller.isListening(ip,myControllers[controllerName]) == False: #if the controller is down
+            print("-------------")
+
+            d["connected"] = 0
+            networks.hset(conf.netId,controllerName,str(d))
+            
+            #the controller down was the MASTER
+            if networks.hget(conf.netId,"currentMaster") != None:
+                if int(networks.hget(conf.netId,"currentMaster"))==myControllers[controllerName]:
+                    print("MASTER is down!!!")
+                    electNewMaster(networks,conf,allControllers)
+        else:
+            d["connected"] = 1
+            networks.hset(conf.netId,controllerName,str(d))
 
     raise MyException("An error in thread")
 
-def monitorControllers(conf,net,ports,cluster,connections,myControllers):
+def masterLoadBalancing(networks,conf,controllers):
 
-    nControllers=conf.nControllers
-    ip=conf.ip
-    sleep(1)
+    allControllers = controllers.keys()
 
-    for i in range(0,nControllers):
-
-        controller = net.getNodeByName(myControllers[i])
-
-        #check controllers connections
-        if controller.isListening(ip,ports[i]) == False: #if the controller is down
-            print("-------------")
-            connections.hset(conf.netId,str(ports[i]),0)
-        
-            if int(cluster.hget(conf.netId,"currentMaster"))==ports[i]: #if the controller down was the MASTER
-                print("MASTER is down!!!")
-                electNewMaster(cluster,conf,ports,connections)
-        else:
-            connections.hset(conf.netId,str(ports[i]),1) #if the controller is still up
+    sleep(conf.masterSlaveLoadBalancingTime)
+    electNewMaster(networks,conf,allControllers)
 
     raise MyException("An error in thread")
 
@@ -235,38 +256,42 @@ if __name__ == '__main__':
     #redis port
     redisConfig = configparser.ConfigParser()
     redisConfig.read("init.conf")
-    redisPort = int(redisConfig['DEFAULT']['redisPort'])
+    conf.redisPort = int(redisConfig['DEFAULT']['redisPort'])
 
-    #initializing redis DBS
-    networks = readRedisDatabase(conf.ip,redisPort,0)
-    cluster = readRedisDatabase(conf.ip,redisPort,1)
-    connections = readRedisDatabase(conf.ip,redisPort,2,flush=True)
+    #initializing redis DBs
+    controllers = readRedisDatabase(conf.ip,conf.redisPort,0)
+    networks = readRedisDatabase(conf.ip,conf.redisPort,1)
+    namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
   
     #create network
-    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch)
+    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId)
     net = Mininet(topo=topo,  build=False)
 
-    #add controllers
-    result = addControllers(conf,net,networks,conf.connectionModel,connections,cluster)
-    ports = result[0]
-    myControllers = result[1]
-    
-    #start network
+    #add initial controllers
+    initialControllers = networks.hgetall(conf.netId) #controllers defined to initilization
+    allControllers = controllers.keys()
+
+    for c in initialControllers:
+        if c in allControllers:
+            d = ast.literal_eval(initialControllers[c])
+            addController(net,c,int(d["port"]),conf)
+
+    #build and start network
     net.build()
-    net = addSwitchToSwitchLinks(net,networks,conf.nSwitches)
+    net = addSwitchToSwitchLinks(net,namespaces,conf.nSwitches)
     net.start()
-    freeMaster(cluster,conf)
+    freeMaster(networks,conf)
 
     threads = []
 
     #multithreading monitorControllers
-    t1 = ThreadMonitorControllersConnection(target=monitorControllers,args=[conf,net,ports,cluster,connections,myControllers])
+    t1 = ThreadMonitorControllersConnection(target=monitorControllers,args=[conf,networks,controllers])
     t1.start()
     threads.append(t1)
 
     #multithreading masterLoadBalancing
     if conf.connectionModel == "master-slave" and conf.masterSlaveLoadBalancingTime > 0:
-        t2 = ThreadMasterLoadBalancing(target=masterLoadBalancing,args=[cluster,conf,ports,connections])
+        t2 = ThreadMasterLoadBalancing(target=masterLoadBalancing,args=[networks,conf,controllers])
         t2.start()
         threads.append(t2)
 
@@ -276,7 +301,7 @@ if __name__ == '__main__':
         try:
             t.join()
         except Exception as e:
-            print("Thread error!:", e)
+            print("Thread error!", e)
 
     net.stop()
 

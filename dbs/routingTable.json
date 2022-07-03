@@ -1,6 +1,6 @@
 [
     {
-        "switchDatapath": 1,
+        "datapathId": 1,
         "routingTable":[
             {
                 "eth_add": "00:00:00:00:00:02",
