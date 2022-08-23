@@ -76,7 +76,7 @@ class controller(app_manager.RyuApp):
             for network in networks:
                 
                 #if no master is present
-                if int(self.networks.hget(network,"masterCredits"))==1:
+                if int(self.networks.hget(network,"masterCredits"))>=1:
                     self.logger.info("------------------------")
                     self.logger.info("No MASTER present")
                     self.logger.info("------------------------")
@@ -108,8 +108,8 @@ class controller(app_manager.RyuApp):
     def selfElectMaster(self,network,datapath):
         ofproto = datapath.ofproto
    
-        self.networks.hset(network,"masterCredits",0)
-        self.networks.hset(network,"currentMaster",self.CONF.port)
+        self.networks.hincrby(network,"masterCredits",-1)
+        self.networks.hset(network,"currentMaster",int(self.CONF.port))
         self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_MASTER)
 
     #generic role request
@@ -153,7 +153,7 @@ class controller(app_manager.RyuApp):
        
         if self.CONF.connectionmodel == 'master-slave':
             #if there is no MASTER present
-            if int(self.networks.hget(networkId,"masterCredits")) == 1 or int(self.networks.hget(networkId,"currentMaster"))==self.CONF.port:
+            if int(self.networks.hget(networkId,"masterCredits")) >= 1:
                 self.selfElectMaster(networkId,datapath) #take MASTER role for this datapath
             else: #else, take SLAVE role
                 self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
@@ -234,7 +234,7 @@ class controller(app_manager.RyuApp):
         d = ast.literal_eval(c[self.CONF.name])
         d["reqs"] += 1
         self.networks.hset(networkId,self.CONF.name,str(d))
-
+ 
         in_port = msg.match['in_port']
         
         pkt = packet.Packet(msg.data)

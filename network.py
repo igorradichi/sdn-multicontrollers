@@ -1,5 +1,6 @@
 from ast import While
 from concurrent.futures import thread
+from doctest import master
 import threading
 from mininet.topo import Topo
 from mininet.net import Mininet
@@ -144,10 +145,11 @@ def addController(net,controllerName,controllerPort,conf):
 
 def electNewMaster(networks,conf,allControllers):
 
+    sleep(1)
+
     availableControllers = []
     reqs = []
     ports = []
-
 
     #aggregate controllers status for that network
     c = networks.hgetall(conf.netId)
@@ -159,6 +161,10 @@ def electNewMaster(networks,conf,allControllers):
                 reqs.append(int(d["reqs"]))
                 ports.append(int(d["port"]))
     
+    print("available:",availableControllers)
+    print("reqs:",reqs)
+    print("ports:",ports)
+    
     #if there is a least one controller available
     if len(availableControllers) > 0: 
 
@@ -167,12 +173,9 @@ def electNewMaster(networks,conf,allControllers):
             lastMaster = random.choice(ports) #choose any
         else:
             lastMaster = int(networks.hget(conf.netId,"currentMaster"))
-        
+
         #elect the next MASTER (based on least amount of reqs)
         nextMaster = int(ports[reqs.index(min(reqs))])
-
-        #set the new MASTER as current MASTER
-        networks.hset(conf.netId,"currentMaster",nextMaster)
 
         #if there has been a change in mastery
         if lastMaster != nextMaster:
@@ -181,18 +184,26 @@ def electNewMaster(networks,conf,allControllers):
             print("Available controllers: ",availableControllers)
             print(availableControllers[ports.index(nextMaster)],"elected as MASTER")
             print("-------------")
+            #set the new MASTER as current MASTER
+            networks.hset(conf.netId,"currentMaster",nextMaster)
             freeMaster(networks,conf)
+        else:
+            print("-------------")
+            print("No changes to mastery...")
+            print("-------------")
     else: #if there were no controllers available
         networks.hdel(conf.netId,"currentMaster")
         freeMaster(networks,conf)
 
 def freeMaster(networks,conf):
-    networks.hset(conf.netId,"masterCredits",1)
+
+    datapaths = ast.literal_eval(networks.hget(conf.netId,"datapaths"))
+    networks.hset(conf.netId,"masterCredits",len(datapaths))
 
 def monitorControllers(conf,networks,controllers):
 
     sleep(1)
-
+    print("MONITORING...")
     allControllers = controllers.keys()
 
     myControllers = {}
@@ -217,14 +228,13 @@ def monitorControllers(conf,networks,controllers):
         
         #check controllers connections
         if controller.isListening(ip,myControllers[controllerName]) == False: #if the controller is down
-            print("-------------")
 
             d["connected"] = 0
             networks.hset(conf.netId,controllerName,str(d))
             
             #the controller down was the MASTER
             if networks.hget(conf.netId,"currentMaster") != None:
-                if int(networks.hget(conf.netId,"currentMaster"))==myControllers[controllerName]:
+                if int(networks.hget(conf.netId,"currentMaster"))==int(myControllers[controllerName]):
                     print("MASTER is down!!!")
                     electNewMaster(networks,conf,allControllers)
         else:
@@ -238,6 +248,7 @@ def masterLoadBalancing(networks,conf,controllers):
     allControllers = controllers.keys()
 
     sleep(conf.masterSlaveLoadBalancingTime)
+    print("-------------")
     electNewMaster(networks,conf,allControllers)
 
     raise MyException("An error in thread")
