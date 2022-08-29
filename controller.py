@@ -18,6 +18,7 @@ class controller(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(controller, self).__init__(*args, **kwargs)
+        
         #config file
         self.CONF = cfg.CONF
         self.CONF.register_opts([

@@ -9,6 +9,7 @@ if __name__ == '__main__':
 
     os.system('sudo mn -c')
 
+    #config file
     config = configparser.ConfigParser()
     config.read('init.conf')
     
@@ -18,6 +19,7 @@ if __name__ == '__main__':
     nNetworks = int(config['DEFAULT']['nNetworks'])
     nControllersPerNetwork = int(config['DEFAULT']['nControllersPerNetwork'])
 
+    #flush databases
     controllers = redis.Redis(ip,redisPort,0)
     networks = redis.Redis(ip,redisPort,1)
     namespaces = redis.Redis(ip,redisPort,2)
@@ -31,6 +33,7 @@ if __name__ == '__main__':
     nControllers = nNetworks*nControllersPerNetwork
     controllerPort = controllersFirstPort
 
+    #set controllers ports
     for controller in range (1,nControllers+1):
         controllers.set("c"+str(controller),controllerPort)
         controllerPort += 1
@@ -53,7 +56,6 @@ if __name__ == '__main__':
     namespaces.set("nextHostIndex",1)
     
     #delete controllers config files
-    
     for i in range(1,controllerIndex):
         print('c'+str(i)+'.conf')
         os.remove('c'+str(i)+'.conf')
