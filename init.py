@@ -20,10 +20,10 @@ if __name__ == '__main__':
     nControllersPerNetwork = int(config['DEFAULT']['nControllersPerNetwork'])
 
     #flush databases
-    controllers = redis.Redis(ip,redisPort,0)
-    networks = redis.Redis(ip,redisPort,1)
-    namespaces = redis.Redis(ip,redisPort,2)
-    routingTable = redis.Redis(ip,redisPort,3)
+    controllers = redis.Redis(ip,redisPort,0,decode_responses=True)
+    networks = redis.Redis(ip,redisPort,1,decode_responses=True)
+    namespaces = redis.Redis(ip,redisPort,2,decode_responses=True)
+    routingTable = redis.Redis(ip,redisPort,3,decode_responses=True)
 
     controllers.flushdb()
     networks.flushdb()

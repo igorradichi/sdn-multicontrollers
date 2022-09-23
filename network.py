@@ -1,4 +1,5 @@
 from ast import While
+from audioop import add
 from concurrent.futures import thread
 from doctest import master
 import threading
@@ -25,6 +26,7 @@ class Conf:
         config.read(file)
         
         self.netId = config['DEFAULT']['netId']
+        self.failMode = config['DEFAULT']['failMode']
         self.ip = config['DEFAULT']['ip']
         self.connectionModel = config['DEFAULT']['connectionModel']
         self.masterSlaveLoadBalancingTime = int(config['DEFAULT']['masterSlaveLoadBalancingTime'])
@@ -35,7 +37,7 @@ class Conf:
 
 class MyTopo(Topo):
 
-    def build(self, nSwitches, nHostsPerSwitch, netId):
+    def build(self, nSwitches, nHostsPerSwitch, netId, failMode):
 
         networks = readRedisDatabase(conf.ip,conf.redisPort,1)
         namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
@@ -43,7 +45,7 @@ class MyTopo(Topo):
 
         for s in range(1,nSwitches+1):
             switchIndex = str(nextElementIndex(namespaces,"nextSwitchIndex"))
-            sw = self.addSwitch('s'+switchIndex, failMode='secure')
+            sw = self.addSwitch('s'+switchIndex, failMode=failMode)
             datapaths.append(switchIndex)
             for h in range(1,nHostsPerSwitch+1):
                 hostIndex = str(nextElementIndex(namespaces,"nextHostIndex"))
@@ -61,7 +63,7 @@ class ThreadMonitorControllersConnection(threading.Thread):
         self.exc = None           
         while True:
             try:
-                monitorControllers(conf,networks,controllers)
+                monitorControllers(net,conf,networks,controllers)
             except BaseException as e:
                 self.exc = e
        
@@ -200,7 +202,7 @@ def freeMaster(networks,conf):
     datapaths = ast.literal_eval(networks.hget(conf.netId,"datapaths"))
     networks.hset(conf.netId,"masterCredits",len(datapaths))
 
-def monitorControllers(conf,networks,controllers):
+def monitorControllers(net,conf,networks,controllers):
 
     sleep(1)
     print("MONITORING...")
@@ -221,7 +223,12 @@ def monitorControllers(conf,networks,controllers):
     #monitor each known controller
     for i in range(0,nControllers):
         controllerName = list(myControllers.keys())[i]
-        controller = net.getNodeByName(controllerName)
+
+        try:
+            controller = net.getNodeByName(controllerName)
+        except:
+            addController(net,controllerName,myControllers[controllerName],conf)
+            controller = net.getNodeByName(controllerName)
 
         c = networks.hgetall(conf.netId)
         d = ast.literal_eval(c[controllerName])
@@ -275,7 +282,7 @@ if __name__ == '__main__':
     namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
   
     #create network
-    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId)
+    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId,conf.failMode)
     net = Mininet(topo=topo,  build=False)
 
     #add initial controllers
@@ -296,7 +303,7 @@ if __name__ == '__main__':
     threads = []
 
     #multithreading monitorControllers
-    t1 = ThreadMonitorControllersConnection(target=monitorControllers,args=[conf,networks,controllers])
+    t1 = ThreadMonitorControllersConnection(target=monitorControllers,args=[net,conf,networks,controllers])
     t1.start()
     threads.append(t1)
 
@@ -315,5 +322,3 @@ if __name__ == '__main__':
             print("Thread error!", e)
 
     net.stop()
-
-
