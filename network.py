@@ -205,7 +205,7 @@ def freeMaster(networks,conf):
 def monitorControllers(net,conf,networks,controllers):
 
     sleep(1)
-    print("MONITORING...")
+    print("\n*** Monitoring controllers...")
     allControllers = controllers.keys()
 
     myControllers = {}
