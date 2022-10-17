@@ -1,3 +1,4 @@
+#from _typeshed import Self
 from ast import While
 from audioop import add
 from concurrent.futures import thread
@@ -34,15 +35,16 @@ class Conf:
         self.nHostsPerSwitch = int(config['DEFAULT']['nHostsPerSwitch'])
         self.flowIdleTimeout = config['DEFAULT']['flowIdleTimeout']
         self.flowHardTimeout = config['DEFAULT']['flowHardTimeout']
-        self.experiment = config['DEFAULT']['experiment']
 
 class MyTopo(Topo):
 
-    def build(self, nSwitches, nHostsPerSwitch, netId, failMode):
+    def build(self, nSwitches, nHostsPerSwitch, netId, failMode, experiments):
 
         networks = readRedisDatabase(conf.ip,conf.redisPort,1)
         namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
         datapaths = []
+
+        hostsNames = []
 
         for s in range(1,nSwitches+1):
             switchIndex = str(nextElementIndex(namespaces,"nextSwitchIndex"))
@@ -50,13 +52,44 @@ class MyTopo(Topo):
             datapaths.append(switchIndex)
             for h in range(1,nHostsPerSwitch+1):
                 hostIndex = str(nextElementIndex(namespaces,"nextHostIndex"))
-                ht = self.addHost('h'+hostIndex, mac=nexthostMAC(hostIndex))
+                hostMAC = nexthostMAC(hostIndex)
+                ht = self.addHost('h'+hostIndex, mac=hostMAC)
                 self.addLink(sw,ht)
+                hostsNames.append(ht)
 
         networks.hset(netId,"datapaths",str(datapaths))
+        experiments.hset("1","hostsNames",str(hostsNames))
 
 class MyException(Exception):
     pass
+
+class ThreadExperiment1Ping(threading.Thread):
+
+    def run(self):
+        self.exc = None           
+        try:
+            experiment1Ping(net,experiments)
+        except BaseException as e:
+            self.exc = e
+    
+    def join(self):
+        threading.Thread.join(self)
+        if self.exc:
+            raise self.exc
+
+class ThreadExperiment1TakeControllerDown(threading.Thread):
+
+    def run(self):
+        self.exc = None           
+        try:
+            experiment1TakeControllerDown(experiments)
+        except BaseException as e:
+            self.exc = e
+    
+    def join(self):
+        threading.Thread.join(self)
+        if self.exc:
+            raise self.exc
 
 class ThreadMonitorControllersConnection(threading.Thread):
 
@@ -87,6 +120,41 @@ class ThreadMasterLoadBalancing(threading.Thread):
         threading.Thread.join(self)
         if self.exc:
             raise self.exc
+
+def experiment1Ping(net, experiments):
+
+    h = net.get(experiments.hget("1","host"))
+    nPackets = experiments.hget("1","nPackets")
+
+    hostsNames = ast.literal_eval(experiments.hget(1,"hostsNames"))
+    hostsIPs = ast.literal_eval(experiments.hget(1,"hostsIPs"))
+
+    pingAddresses = ""
+
+    #make ping from every host to every other host
+
+    for name in hostsNames:
+        if name != str(h):
+            pingAddresses += hostsIPs[hostsNames.index(name)]
+            pingAddresses += " "
+
+    ping = h.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q'))
+
+    with open('experiment1.txt', 'a') as f:
+        f.write(str("* Fail time: " + experiments.hget(1,"failTime") + "s\n"))
+        f.write(str("* From host: " + h))
+        f.write(ping)
+        f.write("-------------\n")
+
+    print("\n[OK] Experiment output saved to experiment1.txt")
+
+def experiment1TakeControllerDown(experiments):
+
+    fallTime = int(experiments.hget("1","failTime"))
+    sleep(fallTime)
+    print("Taking down controller 6001...")
+    os.system('sudo kill -9 `sudo lsof -t -i:6001`')
+
 
 def readRedisDatabase(host,port,db,flush=False):
 
@@ -140,7 +208,6 @@ def addController(net,controllerName,controllerPort,conf):
     config.set("DEFAULT","flowIdleTimeout",conf.flowIdleTimeout)
     config.set("DEFAULT","flowHardTimeout",conf.flowHardTimeout)
     config.set("DEFAULT","redisPort",str(conf.redisPort))
-    config.set("DEFAULT","experiment",str(conf.experiment))
 
     with open(r""+controllerName+".conf",'w') as configfileObj:
         config.write(configfileObj)
@@ -285,7 +352,7 @@ if __name__ == '__main__':
     experiments = readRedisDatabase(conf.ip,conf.redisPort,4)
   
     #create network
-    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId,conf.failMode)
+    topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId,conf.failMode,experiments)
     net = Mininet(topo=topo,  build=False)
 
     #add initial controllers
@@ -297,9 +364,11 @@ if __name__ == '__main__':
             d = ast.literal_eval(initialControllers[c])
             addController(net,c,int(d["port"]),conf)
 
-    #build and start network
+    #build network
     net.build()
     net = addSwitchToSwitchLinks(net,namespaces,conf.nSwitches)
+
+    #start network
     net.start()
     freeMaster(networks,conf)
 
@@ -316,34 +385,35 @@ if __name__ == '__main__':
         t2.start()
         threads.append(t2)
 
-
     #cli = CLI(net)
 
-    ## EXPERIMENT 1
+    #EXPERIMENT 1
+    if int(experiments.hget("experiment","running")) == 1:
 
-    ######################### fazer
-    # passar o ping pra uma thread separada, pra que ele possa comecar e imprimir quando acabar
-    # em outra thread, fazer o ato de derrubar o c1
-    # isso pq o ato de derrubar ta esperando o ping acabar desse jeito atual
+        #add hosts IPs for Experiment 1
+        hosts = ast.literal_eval(experiments.hget("1","hostsNames"))
+        hostsIPs = []
 
-    if int(conf.experiment) == 1:
+        for host in hosts:
+            h = net.get(host)
+            hostsIPs.append(h.IP())
+
+        experiments.hset("1","hostsIPs",str(hostsIPs))
+
         while(1):
             if int(experiments.hget("1","start")) == 1:
-                print("\nStarting EXPERIMENT 1...")
+                print("\n****************************\nStarting EXPERIMENT 1...\n****************************")
                 
-                h1 = net.get("h1")
-                ping = h1.cmd('ping 10.0.0.2 -c 5')
-                
-                sleep(5)
+                t3 = ThreadExperiment1Ping(target=experiment1Ping,args=[net,experiments])
+                t3.start()
+                threads.append(t3)
 
-                os.system('sudo kill -9 `sudo lsof -t -i:6001`')
+                t4 = ThreadExperiment1TakeControllerDown(target=experiment1TakeControllerDown,args=[experiments])
+                t4.start()
+                threads.append(t4)
 
                 experiments.hset("1","start",0)
                 break
-
-        sleep(10) #reasonable time for the ping to complete        
-        print("my ping:")
-        print(ping)
 
     for t in threads:
         try:

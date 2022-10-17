@@ -5,6 +5,8 @@ import configparser
 import sys
 import os
 
+from network import experiment1Ping
+
 if __name__ == '__main__':
 
     os.system('sudo mn -c')
@@ -18,7 +20,10 @@ if __name__ == '__main__':
     controllersFirstPort = int(config['DEFAULT']['controllersFirstPort'])
     nNetworks = int(config['DEFAULT']['nNetworks'])
     nControllersPerNetwork = int(config['DEFAULT']['nControllersPerNetwork'])
-    experiment1FallTIme = int(config['DEFAULT']['experiment1FallTime'])
+    experiment = int(config['DEFAULT']['experiment'])
+    experiment1FailTime = int(config['DEFAULT']['experiment1FailTime'])
+    experiment1Host = config['DEFAULT']['experiment1Host']
+    experiment1NPackets = config['DEFAULT']['experiment1NPackets']
 
     #flush databases
     controllers = redis.Redis(ip,redisPort,0,decode_responses=True)
@@ -58,8 +63,12 @@ if __name__ == '__main__':
     namespaces.set("nextSwitchIndex",1)
     namespaces.set("nextHostIndex",1)
     
+    experiments.hset("experiment","running",experiment)
+
     experiments.hset("1","start",0)
-    experiments.hset("1","fallTime",experiment1FallTIme)
+    experiments.hset("1","failTime",experiment1FailTime)
+    experiments.hset("1","host",experiment1Host)
+    experiments.hset("1","nPackets",experiment1NPackets)
 
     experiments.hset("2","start",0)
 
