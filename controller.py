@@ -1,3 +1,4 @@
+from concurrent.futures import thread
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -12,6 +13,10 @@ from ryu import cfg
 from ryu.lib import hub
 from time import sleep
 import ast
+import sys
+import threading
+from threading import Thread
+import time
 
 class controller(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
@@ -42,6 +47,9 @@ class controller(app_manager.RyuApp):
             ),
             cfg.IntOpt(
                 'redisport', default='6379', help = ('Redis server port')
+            ),
+            cfg.IntOpt(
+                'experiment', default='1', help = ('Experiment running')
             )
             ]
         )
@@ -49,6 +57,7 @@ class controller(app_manager.RyuApp):
         #initializing redis DBs
         self.routingTable = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 3,decode_responses=True)
         self.networks = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 1,decode_responses=True)
+        self.experiments = redis.Redis(host=self.CONF.ip, port=self.CONF.redisport, db = 4,decode_responses=True)
 
         #datapaths dictionary
         self.datapaths = {}
@@ -59,10 +68,10 @@ class controller(app_manager.RyuApp):
         self.logger.info("------------------------")
         self.logger.info("Controller port: %s",self.CONF.port)
         self.logger.info("------------------------")
-
+        
         if self.CONF.connectionmodel == 'master-slave':
-            hub.spawn(self.monitorMaster)
-    
+             hub.spawn(self.monitorMaster)
+
     #monitor mastery availability for each known network
     def monitorMaster(self):
         self.logger.info("------------------------")

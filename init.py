@@ -18,17 +18,20 @@ if __name__ == '__main__':
     controllersFirstPort = int(config['DEFAULT']['controllersFirstPort'])
     nNetworks = int(config['DEFAULT']['nNetworks'])
     nControllersPerNetwork = int(config['DEFAULT']['nControllersPerNetwork'])
+    experiment1FallTIme = int(config['DEFAULT']['experiment1FallTime'])
 
     #flush databases
     controllers = redis.Redis(ip,redisPort,0,decode_responses=True)
     networks = redis.Redis(ip,redisPort,1,decode_responses=True)
     namespaces = redis.Redis(ip,redisPort,2,decode_responses=True)
     routingTable = redis.Redis(ip,redisPort,3,decode_responses=True)
+    experiments = redis.Redis(ip,redisPort,4,decode_responses=True)
 
     controllers.flushdb()
     networks.flushdb()
     namespaces.flushdb()
     routingTable.flushdb()
+    experiments.flushdb()
 
     nControllers = nNetworks*nControllersPerNetwork
     controllerPort = controllersFirstPort
@@ -55,6 +58,11 @@ if __name__ == '__main__':
     namespaces.set("nextSwitchIndex",1)
     namespaces.set("nextHostIndex",1)
     
+    experiments.hset("1","start",0)
+    experiments.hset("1","fallTime",experiment1FallTIme)
+
+    experiments.hset("2","start",0)
+
     #delete controllers config files
     for i in range(1,controllerIndex):
         print('c'+str(i)+'.conf')

@@ -34,6 +34,7 @@ class Conf:
         self.nHostsPerSwitch = int(config['DEFAULT']['nHostsPerSwitch'])
         self.flowIdleTimeout = config['DEFAULT']['flowIdleTimeout']
         self.flowHardTimeout = config['DEFAULT']['flowHardTimeout']
+        self.experiment = config['DEFAULT']['experiment']
 
 class MyTopo(Topo):
 
@@ -139,6 +140,7 @@ def addController(net,controllerName,controllerPort,conf):
     config.set("DEFAULT","flowIdleTimeout",conf.flowIdleTimeout)
     config.set("DEFAULT","flowHardTimeout",conf.flowHardTimeout)
     config.set("DEFAULT","redisPort",str(conf.redisPort))
+    config.set("DEFAULT","experiment",str(conf.experiment))
 
     with open(r""+controllerName+".conf",'w') as configfileObj:
         config.write(configfileObj)
@@ -280,6 +282,7 @@ if __name__ == '__main__':
     controllers = readRedisDatabase(conf.ip,conf.redisPort,0)
     networks = readRedisDatabase(conf.ip,conf.redisPort,1)
     namespaces = readRedisDatabase(conf.ip,conf.redisPort,2)
+    experiments = readRedisDatabase(conf.ip,conf.redisPort,4)
   
     #create network
     topo = MyTopo(conf.nSwitches,conf.nHostsPerSwitch,conf.netId,conf.failMode)
@@ -313,7 +316,34 @@ if __name__ == '__main__':
         t2.start()
         threads.append(t2)
 
-    CLI(net)
+
+    #cli = CLI(net)
+
+    ## EXPERIMENT 1
+
+    ######################### fazer
+    # passar o ping pra uma thread separada, pra que ele possa comecar e imprimir quando acabar
+    # em outra thread, fazer o ato de derrubar o c1
+    # isso pq o ato de derrubar ta esperando o ping acabar desse jeito atual
+
+    if int(conf.experiment) == 1:
+        while(1):
+            if int(experiments.hget("1","start")) == 1:
+                print("\nStarting EXPERIMENT 1...")
+                
+                h1 = net.get("h1")
+                ping = h1.cmd('ping 10.0.0.2 -c 5')
+                
+                sleep(5)
+
+                os.system('sudo kill -9 `sudo lsof -t -i:6001`')
+
+                experiments.hset("1","start",0)
+                break
+
+        sleep(10) #reasonable time for the ping to complete        
+        print("my ping:")
+        print(ping)
 
     for t in threads:
         try:
