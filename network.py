@@ -17,7 +17,7 @@ from threading import Thread
 import os
 import random
 import ast
-
+import time
 
 class Conf:  
 
@@ -63,6 +63,20 @@ class MyTopo(Topo):
 class MyException(Exception):
     pass
 
+class ThreadExperiment1(threading.Thread):
+
+    def run(self):
+        self.exc = None           
+        try:
+            experiment1(net,experiments,conf)
+        except BaseException as e:
+            self.exc = e
+    
+    def join(self):
+        threading.Thread.join(self)
+        if self.exc:
+            raise self.exc
+
 class ThreadExperiment1Ping(threading.Thread):
 
     def run(self):
@@ -82,7 +96,7 @@ class ThreadExperiment1TakeControllerDown(threading.Thread):
     def run(self):
         self.exc = None           
         try:
-            experiment1TakeControllerDown(experiments)
+            experiment1TakeControllerDown(experiments,conf)
         except BaseException as e:
             self.exc = e
     
@@ -121,40 +135,93 @@ class ThreadMasterLoadBalancing(threading.Thread):
         if self.exc:
             raise self.exc
 
+def experiment1(net,experiments,conf):
+
+    experiment1Threads = []
+
+    while(1):
+        if int(experiments.hget("1","start")) == 1: #start the experiment
+            
+            start = time.time()
+
+            print("\n****************************\nStarting EXPERIMENT 1...\n****************************")
+            
+            #start ping thread
+            tex11 = ThreadExperiment1Ping(target=experiment1Ping,args=[net,experiments])
+            tex11.start()
+            experiment1Threads.append(tex11)
+
+            #start controller fail thread
+            tex12 = ThreadExperiment1TakeControllerDown(target=experiment1TakeControllerDown,args=[experiments,conf])
+            tex12.start()
+            experiment1Threads.append(tex12)
+
+            #wait for both threads to complete
+            for t in experiment1Threads:
+                try:
+                    t.join()
+                except Exception as e:
+                    print("Thread error!", e)
+
+            end = time.time()
+        
+            failTime = int(experiments.hget("1","failTime"))
+
+            #experiment headers
+            with open('experiment1.txt', 'a') as f:
+                f.write("* Connection Model: "+conf.connectionModel+"\n")
+                f.write("* N Switches: "+str(conf.nSwitches)+"\n")
+                f.write("* N Hosts: "+str(int(conf.nHostsPerSwitch)*int(conf.nSwitches))+"\n")
+                f.write(str("* Fail time (s): "+str(failTime)+"\n"))                
+
+            if conf.connectionModel == "master-slave":
+                clockMasterFail = float(experiments.hget("1","clockMasterFail"))
+                clockMasterRecovery = float(experiments.hget("1","clockMasterRecovery"))
+                with open('experiment1.txt', 'a') as f:
+                    f.write(str("* Master recovery time (s): "+str(clockMasterRecovery-clockMasterFail)+"\n"))                
+
+            with open('experiment1.txt', 'a') as f:
+                f.write(str("* Execution duration (s): "+str(end-start)+"\n"))
+                f.write("-------------\n")
+
+            print("\n****************************\nEnded EXPERIMENT 1...\n****************************")
+            
+            experiments.hset("1","start",0)
+
+            break
+
 def experiment1Ping(net, experiments):
 
-    h = net.get(experiments.hget("1","host"))
     nPackets = experiments.hget("1","nPackets")
 
     hostsNames = ast.literal_eval(experiments.hget(1,"hostsNames"))
     hostsIPs = ast.literal_eval(experiments.hget(1,"hostsIPs"))
 
-    pingAddresses = ""
+    #each host ping each other host
+    for src in hostsNames:
+        pingAddresses = ""
+        for dst in hostsNames:
+            if src != dst:
+                pingAddresses += hostsIPs[hostsNames.index(dst)]
+                pingAddresses += " "
 
-    #make ping from every host to every other host
+        ping = h.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q -r 0'))
 
-    for name in hostsNames:
-        if name != str(h):
-            pingAddresses += hostsIPs[hostsNames.index(name)]
-            pingAddresses += " "
-
-    ping = h.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q'))
-
-    with open('experiment1.txt', 'a') as f:
-        f.write(str("* Fail time: " + experiments.hget(1,"failTime") + "s\n"))
-        f.write(str("* From host: " + h))
-        f.write(ping)
-        f.write("-------------\n")
+        with open('experiment1.txt', 'a') as f:
+            f.write(ping)
 
     print("\n[OK] Experiment output saved to experiment1.txt")
 
-def experiment1TakeControllerDown(experiments):
+def experiment1TakeControllerDown(experiments,conf):
 
-    fallTime = int(experiments.hget("1","failTime"))
-    sleep(fallTime)
-    print("Taking down controller 6001...")
+    failTime = int(experiments.hget("1","failTime"))
+    sleep(failTime)
+    print("\n[!] Taking down controller 6001...")
+    
     os.system('sudo kill -9 `sudo lsof -t -i:6001`')
 
+    if conf.connectionModel == "master-slave":
+        experiments.hset("1","clockMasterFail",time.time())
 
 def readRedisDatabase(host,port,db,flush=False):
 
@@ -400,20 +467,10 @@ if __name__ == '__main__':
 
         experiments.hset("1","hostsIPs",str(hostsIPs))
 
-        while(1):
-            if int(experiments.hget("1","start")) == 1:
-                print("\n****************************\nStarting EXPERIMENT 1...\n****************************")
-                
-                t3 = ThreadExperiment1Ping(target=experiment1Ping,args=[net,experiments])
-                t3.start()
-                threads.append(t3)
-
-                t4 = ThreadExperiment1TakeControllerDown(target=experiment1TakeControllerDown,args=[experiments])
-                t4.start()
-                threads.append(t4)
-
-                experiments.hset("1","start",0)
-                break
+        #start the experiment
+        tex1 = ThreadExperiment1(target=experiment1,args=[net,experiments,conf])
+        tex1.start()
+        threads.append(tex1)
 
     for t in threads:
         try:

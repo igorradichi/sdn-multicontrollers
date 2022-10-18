@@ -22,7 +22,6 @@ if __name__ == '__main__':
     nControllersPerNetwork = int(config['DEFAULT']['nControllersPerNetwork'])
     experiment = int(config['DEFAULT']['experiment'])
     experiment1FailTime = int(config['DEFAULT']['experiment1FailTime'])
-    experiment1Host = config['DEFAULT']['experiment1Host']
     experiment1NPackets = config['DEFAULT']['experiment1NPackets']
 
     #flush databases
@@ -65,11 +64,12 @@ if __name__ == '__main__':
     
     experiments.hset("experiment","running",experiment)
 
+    #Experiment 1
     experiments.hset("1","start",0)
     experiments.hset("1","failTime",experiment1FailTime)
-    experiments.hset("1","host",experiment1Host)
     experiments.hset("1","nPackets",experiment1NPackets)
 
+    #Experiment 2
     experiments.hset("2","start",0)
 
     #delete controllers config files

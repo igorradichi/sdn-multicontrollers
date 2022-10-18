@@ -1,6 +1,91 @@
-Fail time: 2s
+10.0.0.3 : duplicate for [0], 84 bytes, 109 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 109 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 123 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 135 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 140 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 150 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 157 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 160 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 172 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 172 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 173 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 173 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 173 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 173 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 176 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 180 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 180 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 184 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 51.1 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 51.8 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 52.0 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 52.0 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 61.8 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 62.6 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 62.7 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 62.8 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 62.9 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 63.0 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 68.7 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 68.8 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 68.9 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 57.9 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 69.1 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 58.1 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 74.6 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 63.7 ms
+10.0.0.3 : duplicate for [2], 84 bytes, 64.6 ms
+10.0.0.3 : duplicate for [2], 84 bytes, 65.7 ms
+10.0.0.3 : duplicate for [2], 84 bytes, 82.1 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 93.9 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 94.1 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 94.2 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 94.3 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 94.3 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 108 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 108 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 108 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : duplicate for [2], 84 bytes, 111 ms
+10.0.0.2 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 6.72/63.1/129
+10.0.0.3 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 3.42/50.3/94.5
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.01/0.01/0.03
+10.0.0.1 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 6.60/9.84/19.4
+10.0.0.3 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 3.25/4.06/5.63
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.02/0.02/0.03
+10.0.0.1 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 6.41/7.72/10.7
+10.0.0.2 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 7.66/10.3/13.0
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.01/0.01/0.02
+10.0.0.1 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 6.41/7.81/11.3
+10.0.0.2 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 10.6/14.4/19.6
+10.0.0.3 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 2.84/5.06/7.99
+* Connection Model: equal
+* N Switches: 2
+* N Hosts: 4
+* Fail time (s): 2
+* Execution duration (s): 12.112076044082642
 -------------
-10.0.0.1 : xmt/rcv/%loss = 4/3/25%, min/avg/max = 0.23/28.3/47.8
-10.0.0.2 : xmt/rcv/%loss = 4/3/25%, min/avg/max = 0.03/31.7/50.5
-10.0.0.4 : xmt/rcv/%loss = 4/3/25%, min/avg/max = 0.03/18.3/28.2
+10.0.0.2 : xmt/rcv/%loss = 4/0/100%
+10.0.0.3 : xmt/rcv/%loss = 4/3/25%, min/avg/max = 3.50/5.83/10.4
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.02/0.03/0.04
+10.0.0.1 : xmt/rcv/%loss = 4/0/100%
+10.0.0.3 : xmt/rcv/%loss = 4/0/100%
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.03/0.03/0.05
+10.0.0.1 : xmt/rcv/%loss = 4/0/100%
+10.0.0.2 : xmt/rcv/%loss = 4/0/100%
+10.0.0.4 : xmt/rcv/%loss = 4/4/0%, min/avg/max = 0.03/0.03/0.03
+10.0.0.1 : xmt/rcv/%loss = 4/0/100%
+10.0.0.2 : xmt/rcv/%loss = 4/0/100%
+10.0.0.3 : xmt/rcv/%loss = 4/0/100%
+* Connection Model: master-slave
+* N Switches: 2
+* N Hosts: 4
+* Fail time (s): 2
+* Master recovery time (s): 1.635218858718872
+* Execution duration (s): 16.11518907546997
 -------------

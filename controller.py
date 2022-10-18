@@ -178,7 +178,8 @@ class controller(app_manager.RyuApp):
 
     #EVENT: ROLE REPLY
     @set_ev_cls(ofp_event.EventOFPRoleReply, MAIN_DISPATCHER)
-    def roleReplyHandler(self, ev):
+    def roleReplyHandler(self, ev):               
+
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
@@ -194,10 +195,14 @@ class controller(app_manager.RyuApp):
         else:
             role = 'unknown'
 
+        #Register MASTER recovery for Experiment 1
+        if int(self.experiments.hget("experiment","running")) == 1:
+            if int(self.CONF.port) == 6002 and role == "MASTER":
+                self.experiments.hset("1","clockMasterRecovery",time.time())
+
         self.logger.info('OFPRoleReply received: '
                         'role=%s datapath=%d',
                         role, dp.id)
-
 
     #EVENT: STATUS CHANGE ORDER FROM THE SWITCH
     @set_ev_cls(ofp_event.EventOFPRoleStatus, MAIN_DISPATCHER)
@@ -274,7 +279,9 @@ class controller(app_manager.RyuApp):
 
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst, eth_src=src)
-            self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
+            #Don't install flow tables if running Experiment 1
+            if int(self.experiments.hget("experiment","running")) != 1:
+                self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
