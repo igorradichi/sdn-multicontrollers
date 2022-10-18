@@ -3,9 +3,7 @@ from http.client import NETWORK_AUTHENTICATION_REQUIRED
 import redis
 import configparser
 import sys
-import os
-
-from network import experiment1Ping
+import os 
 
 if __name__ == '__main__':
 
