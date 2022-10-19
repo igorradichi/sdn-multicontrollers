@@ -205,7 +205,8 @@ def experiment1Ping(net, experiments):
                 pingAddresses += hostsIPs[hostsNames.index(dst)]
                 pingAddresses += " "
 
-        ping = h.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q -r 0'))
+        hsrc = net.get(src)
+        ping = hsrc.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q -r 0'))
 
         with open('experiment1.txt', 'a') as f:
             f.write(ping)
