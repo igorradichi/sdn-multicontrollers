@@ -69,13 +69,13 @@ class controller(app_manager.RyuApp):
         self.logger.info("Controller port: %s",self.CONF.port)
         self.logger.info("------------------------")
         
-        if self.CONF.connectionmodel == 'master-slave':
-             hub.spawn(self.monitorMaster)
+        if self.CONF.connectionmodel == 'primary-replica':
+             hub.spawn(self.monitorPrimary)
 
     #monitor mastery availability for each known network
-    def monitorMaster(self):
+    def monitorPrimary(self):
         self.logger.info("------------------------")
-        self.logger.info("Master is being monitored...")
+        self.logger.info("Primary is being monitored...")
         self.logger.info("------------------------")
         while True:
             hub.sleep(1)
@@ -85,23 +85,23 @@ class controller(app_manager.RyuApp):
             #for each network that has already communicated with this controller
             for network in networks:
                 
-                #if no master is present
-                if int(self.networks.hget(network,"masterCredits"))>=1:
+                #if no primary is present
+                if int(self.networks.hget(network,"primaryCredits"))>=1:
                     self.logger.info("------------------------")
-                    self.logger.info("No MASTER present")
+                    self.logger.info("No PRIMARY present")
                     self.logger.info("------------------------")
 
-                    #if no master is awaited
-                    if self.networks.hget(network,"currentMaster") == None:
-                        self.logger.info("Requesting master role...")
-                        for d in self.datapaths[network]: #take MASTER role for each datapath
-                            self.selfElectMaster(network,d["datapath"])
+                    #if no primary is awaited
+                    if self.networks.hget(network,"currentPrimary") == None:
+                        self.logger.info("Requesting primary role...")
+                        for d in self.datapaths[network]: #take PRIMARY role for each datapath
+                            self.selfElectPrimary(network,d["datapath"])
                     else:
-                        #if this controller is the master awaited
-                        if int(self.CONF.port) == int(self.networks.hget(network,"currentMaster")):
-                            self.logger.info("Requesting master role...")
-                            for d in self.datapaths[network]: #take MASTER role for each datapath
-                                self.selfElectMaster(network,d["datapath"])
+                        #if this controller is the primary awaited
+                        if int(self.CONF.port) == int(self.networks.hget(network,"currentPrimary")):
+                            self.logger.info("Requesting primary role...")
+                            for d in self.datapaths[network]: #take PRIMARY role for each datapath
+                                self.selfElectPrimary(network,d["datapath"])
 
     #get networkd ID by the switch datapath ID
     def getNetworkIdBySwitchDatapathId(self, datapath):
@@ -114,12 +114,12 @@ class controller(app_manager.RyuApp):
                     return network
         return None
 
-    #send MASTER role request to the datapath
-    def selfElectMaster(self,network,datapath):
+    #send PRIMARY role request to the datapath
+    def selfElectPrimary(self,network,datapath):
         ofproto = datapath.ofproto
    
-        self.networks.hincrby(network,"masterCredits",-1)
-        self.networks.hset(network,"currentMaster",int(self.CONF.port))
+        self.networks.hincrby(network,"primaryCredits",-1)
+        self.networks.hset(network,"currentPrimary",int(self.CONF.port))
         self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_MASTER)
 
     #generic role request
@@ -161,11 +161,11 @@ class controller(app_manager.RyuApp):
             l.append({"datapathId": datapath.id, "datapath": datapath})
             self.datapaths[networkId] = l
        
-        if self.CONF.connectionmodel == 'master-slave':
-            #if there is no MASTER present
-            if int(self.networks.hget(networkId,"masterCredits")) >= 1:
-                self.selfElectMaster(networkId,datapath) #take MASTER role for this datapath
-            else: #else, take SLAVE role
+        if self.CONF.connectionmodel == 'primary-replica':
+            #if there is no PRIMARY present
+            if int(self.networks.hget(networkId,"primaryCredits")) >= 1:
+                self.selfElectPrimary(networkId,datapath) #take PRIMARY role for this datapath
+            else: #else, take REPLICA role
                 self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_SLAVE)
         else:
             self.sendRoleRequest(datapath,ofproto.OFPCR_ROLE_EQUAL)
@@ -189,16 +189,16 @@ class controller(app_manager.RyuApp):
         elif msg.role == ofp.OFPCR_ROLE_EQUAL:
             role = 'EQUAL'
         elif msg.role == ofp.OFPCR_ROLE_MASTER:
-            role = 'MASTER'
+            role = 'PRIMARY'
         elif msg.role == ofp.OFPCR_ROLE_SLAVE:
-            role = 'SLAVE'
+            role = 'REPLICA'
         else:
             role = 'unknown'
 
-        #Register MASTER recovery for Experiment 1
+        #Register PRIMARY recovery for Experiment 1
         if int(self.experiments.hget("experiment","running")) == 1:
-            if int(self.CONF.port) == 6002 and role == "MASTER":
-                self.experiments.hset("1","clockMasterRecovery",time.time())
+            if int(self.CONF.port) == 6002 and role == "PRIMARY":
+                self.experiments.hset("1","clockPrimaryRecovery",time.time())
 
         self.logger.info('OFPRoleReply received: '
                         'role=%s datapath=%d',
@@ -216,14 +216,14 @@ class controller(app_manager.RyuApp):
         elif msg.role == ofp.OFPCR_ROLE_EQUAL:
             role = 'ROLE EQUAL'
         elif msg.role == ofp.OFPCR_ROLE_MASTER:
-            role = 'ROLE MASTER'
+            role = 'ROLE PRIMARY'
         elif msg.role == ofp.OFPCR_ROLE_SLAVE:
-            role = 'SLAVE'
+            role = 'REPLICA'
         else:
             role = 'unknown'
 
         if msg.reason == ofp.OFPCRR_MASTER_REQUEST:
-            reason = 'MASTER REQUEST'
+            reason = 'PRIMARY REQUEST'
         elif msg.reason == ofp.OFPCRR_CONFIG:
             reason = 'CONFIG'
         elif msg.reason == ofp.OFPCRR_EXPERIMENTER:

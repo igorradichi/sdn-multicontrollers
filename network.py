@@ -30,7 +30,7 @@ class Conf:
         self.failMode = config['DEFAULT']['failMode']
         self.ip = config['DEFAULT']['ip']
         self.connectionModel = config['DEFAULT']['connectionModel']
-        self.masterSlaveLoadBalancingTime = int(config['DEFAULT']['masterSlaveLoadBalancingTime'])
+        self.primaryReplicaLoadBalancingTime = int(config['DEFAULT']['primaryReplicaLoadBalancingTime'])
         self.nSwitches = int(config['DEFAULT']['nSwitches'])
         self.nHostsPerSwitch = int(config['DEFAULT']['nHostsPerSwitch'])
         self.flowIdleTimeout = config['DEFAULT']['flowIdleTimeout']
@@ -120,13 +120,13 @@ class ThreadMonitorControllersConnection(threading.Thread):
         if self.exc:
             raise self.exc
 
-class ThreadMasterLoadBalancing(threading.Thread):
+class ThreadPrimaryLoadBalancing(threading.Thread):
 
     def run(self):
         self.exc = None           
         while True:
             try:
-                masterLoadBalancing(networks,conf,controllers)
+                primaryLoadBalancing(networks,conf,controllers)
             except BaseException as e:
                 self.exc = e
        
@@ -174,11 +174,11 @@ def experiment1(net,experiments,conf):
                 f.write("* N Hosts: "+str(int(conf.nHostsPerSwitch)*int(conf.nSwitches))+"\n")
                 f.write(str("* Fail time (s): "+str(failTime)+"\n"))                
 
-            if conf.connectionModel == "master-slave":
-                clockMasterFail = float(experiments.hget("1","clockMasterFail"))
-                clockMasterRecovery = float(experiments.hget("1","clockMasterRecovery"))
+            if conf.connectionModel == "primary-replica":
+                clockPrimaryFail = float(experiments.hget("1","clockPrimaryFail"))
+                clockPrimaryRecovery = float(experiments.hget("1","clockPrimaryRecovery"))
                 with open('experiment1.txt', 'a') as f:
-                    f.write(str("* Master recovery time (s): "+str(clockMasterRecovery-clockMasterFail)+"\n"))                
+                    f.write(str("* Primary recovery time (s): "+str(clockPrimaryRecovery-clockPrimaryFail)+"\n"))                
 
             with open('experiment1.txt', 'a') as f:
                 f.write(str("* Execution duration (s): "+str(end-start)+"\n"))
@@ -221,8 +221,8 @@ def experiment1TakeControllerDown(experiments,conf):
     
     os.system('sudo kill -9 `sudo lsof -t -i:6001`')
 
-    if conf.connectionModel == "master-slave":
-        experiments.hset("1","clockMasterFail",time.time())
+    if conf.connectionModel == "primary-replica":
+        experiments.hset("1","clockPrimaryFail",time.time())
 
 def readRedisDatabase(host,port,db,flush=False):
 
@@ -282,7 +282,7 @@ def addController(net,controllerName,controllerPort,conf):
         configfileObj.flush()
         configfileObj.close()
 
-def electNewMaster(networks,conf,allControllers):
+def electNewPrimary(networks,conf,allControllers):
 
     sleep(1)
 
@@ -307,37 +307,37 @@ def electNewMaster(networks,conf,allControllers):
     #if there is a least one controller available
     if len(availableControllers) > 0: 
 
-        #get the last MASTER
-        if networks.hget(conf.netId,"currentMaster") == None:
-            lastMaster = random.choice(ports) #choose any
+        #get the last PRIMARY
+        if networks.hget(conf.netId,"currentPrimary") == None:
+            lastPrimary = random.choice(ports) #choose any
         else:
-            lastMaster = int(networks.hget(conf.netId,"currentMaster"))
+            lastPrimary = int(networks.hget(conf.netId,"currentPrimary"))
 
-        #elect the next MASTER (based on least amount of reqs)
-        nextMaster = int(ports[reqs.index(min(reqs))])
+        #elect the next PRIMARY (based on least amount of reqs)
+        nextPrimary = int(ports[reqs.index(min(reqs))])
 
         #if there has been a change in mastery
-        if lastMaster != nextMaster:
+        if lastPrimary != nextPrimary:
             print("-------------")
-            print("Electing new MASTER...")
+            print("Electing new PRIMARY...")
             print("Available controllers: ",availableControllers)
-            print(availableControllers[ports.index(nextMaster)],"elected as MASTER")
+            print(availableControllers[ports.index(nextPrimary)],"elected as PRIMARY")
             print("-------------")
-            #set the new MASTER as current MASTER
-            networks.hset(conf.netId,"currentMaster",nextMaster)
-            freeMaster(networks,conf)
+            #set the new PRIMARY as current PRIMARY
+            networks.hset(conf.netId,"currentPrimary",nextPrimary)
+            freePrimary(networks,conf)
         else:
             print("-------------")
             print("No changes to mastery...")
             print("-------------")
     else: #if there were no controllers available
-        networks.hdel(conf.netId,"currentMaster")
-        freeMaster(networks,conf)
+        networks.hdel(conf.netId,"currentPrimary")
+        freePrimary(networks,conf)
 
-def freeMaster(networks,conf):
+def freePrimary(networks,conf):
 
     datapaths = ast.literal_eval(networks.hget(conf.netId,"datapaths"))
-    networks.hset(conf.netId,"masterCredits",len(datapaths))
+    networks.hset(conf.netId,"primaryCredits",len(datapaths))
 
 def monitorControllers(net,conf,networks,controllers):
 
@@ -376,24 +376,24 @@ def monitorControllers(net,conf,networks,controllers):
             d["connected"] = 0
             networks.hset(conf.netId,controllerName,str(d))
             
-            #the controller down was the MASTER
-            if networks.hget(conf.netId,"currentMaster") != None:
-                if int(networks.hget(conf.netId,"currentMaster"))==int(myControllers[controllerName]):
-                    print("MASTER is down!!!")
-                    electNewMaster(networks,conf,allControllers)
+            #the controller down was the PRIMARY
+            if networks.hget(conf.netId,"currentPrimary") != None:
+                if int(networks.hget(conf.netId,"currentPrimary"))==int(myControllers[controllerName]):
+                    print("PRIMARY is down!!!")
+                    electNewPrimary(networks,conf,allControllers)
         else:
             d["connected"] = 1
             networks.hset(conf.netId,controllerName,str(d))
 
     raise MyException("An error in thread")
 
-def masterLoadBalancing(networks,conf,controllers):
+def primaryLoadBalancing(networks,conf,controllers):
 
     allControllers = controllers.keys()
 
-    sleep(conf.masterSlaveLoadBalancingTime)
+    sleep(conf.primaryReplicaLoadBalancingTime)
     print("-------------")
-    electNewMaster(networks,conf,allControllers)
+    electNewPrimary(networks,conf,allControllers)
 
     raise MyException("An error in thread")
 
@@ -438,7 +438,7 @@ if __name__ == '__main__':
 
     #start network
     net.start()
-    freeMaster(networks,conf)
+    freePrimary(networks,conf)
 
     threads = []
 
@@ -447,9 +447,9 @@ if __name__ == '__main__':
     t1.start()
     threads.append(t1)
 
-    #multithreading masterLoadBalancing
-    if conf.connectionModel == "master-slave" and conf.masterSlaveLoadBalancingTime > 0:
-        t2 = ThreadMasterLoadBalancing(target=masterLoadBalancing,args=[networks,conf,controllers])
+    #multithreading primaryLoadBalancing
+    if conf.connectionModel == "primary-replica" and conf.primaryReplicaLoadBalancingTime > 0:
+        t2 = ThreadPrimaryLoadBalancing(target=primaryLoadBalancing,args=[networks,conf,controllers])
         t2.start()
         threads.append(t2)
 

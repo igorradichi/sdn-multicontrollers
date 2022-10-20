@@ -7,8 +7,8 @@
                 "nPackets": 10,
                 "hostsNames": ["h1","h2","h3","h4"],
                 "hostsIPs": ["10.0.0.1","10.0.0.2","10.0.0.3","10.0.0.4"],
-                "clockMasterFail": 1666142632.364011,
-                "clockMasterRecovery": 1666142634.7229922
+                "clockPrimaryFail": 1666142632.364011,
+                "clockPrimaryRecovery": 1666142634.7229922
             },
         "2":{
             "start": 0
