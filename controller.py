@@ -265,6 +265,10 @@ class controller(app_manager.RyuApp):
         dpid = datapath.id
 
         self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
+        
+        #switch-controller msg counter for Experiment 2
+        if int(self.experiments.hget("experiment","running")) == 2:
+            self.experiments.hincrby("2","nSwitchControllerMsgs",1)
 
         #add to the routing table
         self.routingTable.hset(dpid, src, in_port)
@@ -282,6 +286,10 @@ class controller(app_manager.RyuApp):
             #Don't install flow tables if running Experiment 1
             if int(self.experiments.hget("experiment","running")) != 1:
                 self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
+        
+                #controller-switch msg counter for Experiment 2
+                if int(self.experiments.hget("experiment","running")) == 2:
+                    self.experiments.hincrby("2","nControllerSwitchMsgs",1)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
@@ -292,3 +300,7 @@ class controller(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   match=match, actions=actions, data=data)
         datapath.send_msg(out)
+
+        #controller-switch msg counter for Experiment 2
+        if int(self.experiments.hget("experiment","running")) == 2:
+            self.experiments.hincrby("2","nControllerSwitchMsgs",1)

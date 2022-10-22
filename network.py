@@ -58,7 +58,7 @@ class MyTopo(Topo):
                 hostsNames.append(ht)
 
         networks.hset(netId,"datapaths",str(datapaths))
-        experiments.hset("1","hostsNames",str(hostsNames))
+        experiments.hset("experiment","hostsNames",str(hostsNames))
 
 class MyException(Exception):
     pass
@@ -77,12 +77,12 @@ class ThreadExperiment1(threading.Thread):
         if self.exc:
             raise self.exc
 
-class ThreadExperiment1Ping(threading.Thread):
+class ThreadExperiment2(threading.Thread):
 
     def run(self):
         self.exc = None           
         try:
-            experiment1Ping(net,experiments)
+            experiment2(net,experiments,conf)
         except BaseException as e:
             self.exc = e
     
@@ -97,6 +97,20 @@ class ThreadExperiment1TakeControllerDown(threading.Thread):
         self.exc = None           
         try:
             experiment1TakeControllerDown(experiments,conf)
+        except BaseException as e:
+            self.exc = e
+    
+    def join(self):
+        threading.Thread.join(self)
+        if self.exc:
+            raise self.exc
+
+class ThreadExperimentPing(threading.Thread):
+
+    def run(self):
+        self.exc = None           
+        try:
+            experimentPing(net,experiments)
         except BaseException as e:
             self.exc = e
     
@@ -147,7 +161,7 @@ def experiment1(net,experiments,conf):
             print("\n****************************\nStarting EXPERIMENT 1...\n****************************")
             
             #start ping thread
-            tex11 = ThreadExperiment1Ping(target=experiment1Ping,args=[net,experiments])
+            tex11 = ThreadExperimentPing(target=experimentPing,args=[net,experiments])
             tex11.start()
             experiment1Threads.append(tex11)
 
@@ -171,7 +185,8 @@ def experiment1(net,experiments,conf):
             with open('experiment1.txt', 'a') as f:
                 f.write("* Connection Model: "+conf.connectionModel+"\n")
                 f.write("* N Switches: "+str(conf.nSwitches)+"\n")
-                f.write("* N Hosts: "+str(int(conf.nHostsPerSwitch)*int(conf.nSwitches))+"\n")
+                f.write("* N Hosts: "+str(int(conf.nHostsPerSwitch)*int(conf.nSwitches))+"\n")              
+                f.write("* N Packets: "+str(experiments.hget("experiment","nPackets"))+"\n")
                 f.write(str("* Fail time (s): "+str(failTime)+"\n"))                
 
             if conf.connectionModel == "primary-replica":
@@ -190,12 +205,78 @@ def experiment1(net,experiments,conf):
 
             break
 
-def experiment1Ping(net, experiments):
+def experiment2(net,experiments,conf):
 
-    nPackets = experiments.hget("1","nPackets")
+    experiment2Threads = []
 
-    hostsNames = ast.literal_eval(experiments.hget(1,"hostsNames"))
-    hostsIPs = ast.literal_eval(experiments.hget(1,"hostsIPs"))
+    while(1):
+        if int(experiments.hget("2","start")) == 1: #start the experiment
+            
+            start = time.time()
+
+            print("\n****************************\nStarting EXPERIMENT 2...\n****************************")
+            
+            #start ping thread
+            tex21 = ThreadExperimentPing(target=experimentPing,args=[net,experiments])
+            tex21.start()
+            experiment2Threads.append(tex21)
+
+            #wait for threads to complete
+            for t in experiment2Threads:
+                try:
+                    t.join()
+                except Exception as e:
+                    print("Thread error!", e)
+
+            end = time.time()
+
+            #experiment headers
+            with open('experiment2.txt', 'a') as f:
+                f.write("* Connection Model: "+conf.connectionModel+"\n")
+                f.write("* N Switches: "+str(conf.nSwitches)+"\n")
+                f.write("* N Hosts: "+str(int(conf.nHostsPerSwitch)*int(conf.nSwitches))+"\n")              
+                f.write("* N Packets: "+str(experiments.hget("experiment","nPackets"))+"\n")              
+                
+            with open('experiment2.txt', 'a') as f:
+                f.write(str("* Switch-to-controller messages: "+experiments.hget("2","nSwitchControllerMsgs")+"\n"))
+                f.write(str("* Controller-to-switch messages: "+experiments.hget("2","nControllerSwitchMsgs")+"\n"))
+                f.write(str("* Execution duration (s): "+str(end-start)+"\n"))
+                f.write("-------------\n")
+
+            print("\n****************************\nEnded EXPERIMENT 2...\n****************************")
+            
+            experiments.hset("1","start",0)
+
+            break
+
+def experiment1TakeControllerDown(experiments,conf):
+
+    failTime = int(experiments.hget("1","failTime"))
+    sleep(failTime)
+    print("\n[!] Taking down controller 6001...")
+    
+    os.system('sudo kill -9 `sudo lsof -t -i:6001`')
+
+    if conf.connectionModel == "primary-replica":
+        experiments.hset("1","clockPrimaryFail",time.time())
+
+def experimentsHostsIPs(experiments,net):
+
+    hosts = ast.literal_eval(experiments.hget("experiment","hostsNames"))
+    hostsIPs = []
+
+    for host in hosts:
+        h = net.get(host)
+        hostsIPs.append(h.IP())
+
+    experiments.hset("experiment","hostsIPs",str(hostsIPs))
+
+def experimentPing(net, experiments):
+
+    nPackets = experiments.hget("experiment","nPackets")
+
+    hostsNames = ast.literal_eval(experiments.hget("experiment","hostsNames"))
+    hostsIPs = ast.literal_eval(experiments.hget("experiment","hostsIPs"))
 
     #each host ping each other host
     for src in hostsNames:
@@ -208,21 +289,10 @@ def experiment1Ping(net, experiments):
         hsrc = net.get(src)
         ping = hsrc.cmd(str('fping ' + pingAddresses + '-c ' + nPackets + ' -q -r 0'))
 
-        with open('experiment1.txt', 'a') as f:
+        with open(str('experiment'+experiments.hget("experiment","running")+'.txt'), 'a') as f:
             f.write(ping)
 
-    print("\n[OK] Experiment output saved to experiment1.txt")
-
-def experiment1TakeControllerDown(experiments,conf):
-
-    failTime = int(experiments.hget("1","failTime"))
-    sleep(failTime)
-    print("\n[!] Taking down controller 6001...")
-    
-    os.system('sudo kill -9 `sudo lsof -t -i:6001`')
-
-    if conf.connectionModel == "primary-replica":
-        experiments.hset("1","clockPrimaryFail",time.time())
+    print("\n[OK] Experiment output saved to file")
 
 def readRedisDatabase(host,port,db,flush=False):
 
@@ -435,6 +505,7 @@ if __name__ == '__main__':
     #build network
     net.build()
     net = addSwitchToSwitchLinks(net,namespaces,conf.nSwitches)
+    experimentsHostsIPs(experiments,net)
 
     #start network
     net.start()
@@ -453,25 +524,24 @@ if __name__ == '__main__':
         t2.start()
         threads.append(t2)
 
-    #cli = CLI(net)
-
     #EXPERIMENT 1
     if int(experiments.hget("experiment","running")) == 1:
-
-        #add hosts IPs for Experiment 1
-        hosts = ast.literal_eval(experiments.hget("1","hostsNames"))
-        hostsIPs = []
-
-        for host in hosts:
-            h = net.get(host)
-            hostsIPs.append(h.IP())
-
-        experiments.hset("1","hostsIPs",str(hostsIPs))
 
         #start the experiment
         tex1 = ThreadExperiment1(target=experiment1,args=[net,experiments,conf])
         tex1.start()
         threads.append(tex1)
+
+    #EXPERIMENT 2
+    elif int(experiments.hget("experiment","running")) == 2:
+        
+        #start the experiment
+        tex2 = ThreadExperiment2(target=experiment2,args=[net,experiments,conf])
+        tex2.start()
+        threads.append(tex2)
+
+    else:
+        cli = CLI(net)
 
     for t in threads:
         try:
