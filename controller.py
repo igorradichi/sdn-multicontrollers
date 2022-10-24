@@ -268,7 +268,10 @@ class controller(app_manager.RyuApp):
         
         #switch-controller msg counter for Experiment 2
         if int(self.experiments.hget("experiment","running")) == 2:
-            self.experiments.hincrby("2","nSwitchControllerMsgs",1)
+            d = ast.literal_eval(self.experiments.hget("2","nSwitchControllerMsgs"))
+            update = {self.CONF.name:int(d.get(self.CONF.name))+1}
+            d.update(update)
+            self.experiments.hset("2","nSwitchControllerMsgs",str(d))
 
         #add to the routing table
         self.routingTable.hset(dpid, src, in_port)
@@ -283,13 +286,16 @@ class controller(app_manager.RyuApp):
 
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst, eth_src=src)
-            #Don't install flow tables if running Experiment 1
-            if int(self.experiments.hget("experiment","running")) != 1:
+            #Don't install flow tables if running Experiments 1 or 2
+            if int(self.experiments.hget("experiment","running")) == 0:
                 self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
         
-                #controller-switch msg counter for Experiment 2
-                if int(self.experiments.hget("experiment","running")) == 2:
-                    self.experiments.hincrby("2","nControllerSwitchMsgs",1)
+            #controller-switch msg counter for Experiment 2
+            if int(self.experiments.hget("experiment","running")) == 2:
+                d = ast.literal_eval(self.experiments.hget("2","nControllerSwitchMsgs"))
+                update = {self.CONF.name:int(d.get(self.CONF.name))+1}
+                d.update(update)
+                self.experiments.hset("2","nControllerSwitchMsgs",str(d))
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
@@ -303,4 +309,7 @@ class controller(app_manager.RyuApp):
 
         #controller-switch msg counter for Experiment 2
         if int(self.experiments.hget("experiment","running")) == 2:
-            self.experiments.hincrby("2","nControllerSwitchMsgs",1)
+                d = ast.literal_eval(self.experiments.hget("2","nControllerSwitchMsgs"))
+                update = {self.CONF.name:int(d.get(self.CONF.name))+1}
+                d.update(update)
+                self.experiments.hset("2","nControllerSwitchMsgs",str(d))

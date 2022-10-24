@@ -516,3 +516,212 @@
 * Controller-to-switch messages: 2592
 * Execution duration (s): 36.291658878326416
 -------------
+10.0.0.2 : duplicate for [0], 84 bytes, 94.4 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 94.6 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 101 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 353 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 353 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 377 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 377 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 387 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 377 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 388 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 378 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 425 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 415 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 425 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 415 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 426 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 415 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 439 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 429 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 440 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 429 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 440 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 429 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 440 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 430 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 441 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 441 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 457 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 447 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 458 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 447 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 447 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 451 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 20.3 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 20.5 ms
+10.0.0.2 : duplicate for [1], 84 bytes, 20.6 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 136 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 137 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 137 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 137 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 164 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 164 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 165 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 165 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 165 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 165 ms
+10.0.0.2 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 19.9/46.6/73.3
+10.0.0.3 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 108/216/324
+10.0.0.4 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 155/261/367
+10.0.0.1 : duplicate for [0], 84 bytes, 73.8 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 87.3 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 100 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 368 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 369 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 369 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 412 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 412 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 402 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 413 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 403 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 413 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 413 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 403 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 431 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 421 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 431 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 431 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 422 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 432 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 432 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 422 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 422 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 442 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 442 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 442 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 453 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 453 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 443 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 443 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 443 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 443 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 448 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 16.6 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 17.0 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 25.7 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 114 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 157 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 158 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 158 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 158 ms
+10.0.0.1 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 12.1/38.8/65.5
+10.0.0.3 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 113/230/347
+10.0.0.4 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 147/253/359
+10.0.0.1 : duplicate for [0], 84 bytes, 195 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 198 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 201 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 189 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 189 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 230 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 219 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 219 ms
+10.0.0.4 : duplicate for [0], 84 bytes, 220 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 244 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 232 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 245 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 232 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 245 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 233 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 245 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 233 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 270 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 258 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 271 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 259 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 285 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 273 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 291 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 279 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 291 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 279 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 291 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 279 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 291 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 279 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 300 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 288 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 87.9 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 88.7 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 89.0 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 116 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 117 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 117 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 117 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 117 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 143 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 143 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 143 ms
+10.0.0.4 : duplicate for [1], 84 bytes, 119 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 143 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 146 ms
+10.0.0.4 : duplicate for [1], 84 bytes, 122 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 164 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 164 ms
+10.0.0.4 : duplicate for [1], 84 bytes, 140 ms
+10.0.0.1 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 71.2/111/152
+10.0.0.2 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 167/176/186
+10.0.0.4 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 93.8/135/178
+10.0.0.3 : duplicate for [0], 84 bytes, 79.5 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 81.2 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 102 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 210 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 200 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 210 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 200 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 235 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 226 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 237 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 226 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 251 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 241 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 255 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 245 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 259 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 271 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 281 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 271 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 308 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 298 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 309 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 298 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 309 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 299 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 309 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 299 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 310 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 299 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 326 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 315 ms
+10.0.0.1 : duplicate for [0], 84 bytes, 326 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 316 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 111 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 112 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 113 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 113 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 122 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 147 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 147 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 147 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 148 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 148 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 148 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 124 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 170 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 171 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 171 ms
+10.0.0.3 : duplicate for [1], 84 bytes, 147 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 171 ms
+10.0.0.1 : duplicate for [1], 84 bytes, 174 ms
+10.0.0.1 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 87.7/149/210
+10.0.0.2 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 175/187/199
+10.0.0.3 : xmt/rcv/%loss = 2/2/0%, min/avg/max = 64.8/76.5/88.3
+* Connection Model: equal
+* N Switches: 2
+* N Hosts: 4
+* N Packets: 2
+* Switch-to-controller messages: {'c1': 345, 'c2': 305}
+* Controller-to-switch messages: {'c1': 613, 'c2': 570}
+* Execution duration (s): 4.835767507553101
+-------------

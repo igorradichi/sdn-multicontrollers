@@ -143,3 +143,29 @@
 * N Switches: 2
 * N Hosts: 4
 * N Packets: 10
+10.0.0.2 : duplicate for [0], 84 bytes, 65.7 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 66.0 ms
+10.0.0.2 : duplicate for [0], 84 bytes, 97.0 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 332 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 333 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 333 ms
+10.0.0.3 : duplicate for [0], 84 bytes, 333 ms
+10.0.0.2 : xmt/rcv/%loss = 10/9/10%, min/avg/max = 3.49/9.70/55.4
+10.0.0.3 : xmt/rcv/%loss = 10/9/10%, min/avg/max = 6.30/45.3/312
+10.0.0.4 : xmt/rcv/%loss = 10/9/10%, min/avg/max = 6.84/46.5/323
+10.0.0.1 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 3.34/3.67/4.04
+10.0.0.3 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 6.57/13.9/43.2
+10.0.0.4 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 5.45/12.1/33.9
+10.0.0.1 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 5.99/8.63/11.3
+10.0.0.2 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 6.26/7.69/10.5
+10.0.0.4 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 3.31/5.43/12.9
+10.0.0.1 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 6.26/9.30/12.7
+10.0.0.2 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 6.32/10.9/23.8
+10.0.0.3 : xmt/rcv/%loss = 10/10/0%, min/avg/max = 3.42/7.86/17.8
+* Connection Model: equal
+* N Switches: 2
+* N Hosts: 4
+* N Packets: 10
+* Fail time (s): 2
+* Execution duration (s): 39.35795211791992
+-------------

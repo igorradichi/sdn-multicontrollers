@@ -69,8 +69,8 @@ if __name__ == '__main__':
 
     #Experiment 2
     experiments.hset("2","start",0)
-    experiments.hset("2","nControllerSwitchMsgs",0)
-    experiments.hset("2","nSwitchControllerMsgs",0)
+    experiments.hset("2","nControllerSwitchMsgs",str({"c1": 0,"c2": 0}))
+    experiments.hset("2","nSwitchControllerMsgs",str({"c1": 0,"c2": 0}))
 
     #delete controllers config files
     for i in range(1,controllerIndex):

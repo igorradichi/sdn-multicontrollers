@@ -1,17 +1,25 @@
 [
     {
         "running": 1,
+        "nPackets": 10,
+        "hostsNames": ["h1","h2","h3","h4"],
+        "hostsIPs": ["10.0.0.1","10.0.0.2","10.0.0.3","10.0.0.4"],        
         "1":{
                 "start": 0,
                 "failTime": 5,
-                "nPackets": 10,
-                "hostsNames": ["h1","h2","h3","h4"],
-                "hostsIPs": ["10.0.0.1","10.0.0.2","10.0.0.3","10.0.0.4"],
                 "clockPrimaryFail": 1666142632.364011,
                 "clockPrimaryRecovery": 1666142634.7229922
             },
         "2":{
-            "start": 0
+                "start": 0,
+                "nSwitchControllerMsgs":{
+                    "c1": 45,
+                    "c2": 24
+                },
+                "nControllerSwitchMsgs":{
+                    "c1": 32,
+                    "c2": 15
+                }
         }
 
     }
