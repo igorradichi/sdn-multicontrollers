@@ -183,6 +183,7 @@ class controller(app_manager.RyuApp):
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
+        parser = dp.ofproto_parser
 
         if msg.role == ofp.OFPCR_ROLE_NOCHANGE:
             role = 'NOCHANGE'
@@ -199,6 +200,12 @@ class controller(app_manager.RyuApp):
         if int(self.experiments.hget("experiment","running")) == 1:
             if int(self.CONF.port) == 6002 and role == "PRIMARY":
                 self.experiments.hset("1","clockPrimaryRecovery",time.time())
+            
+            #table-miss flow entry
+            match = parser.OFPMatch()
+            actions = [parser.OFPActionOutput(ofp.OFPP_CONTROLLER,
+                                            ofp.OFPCML_NO_BUFFER)]
+            self.addFlow(dp, 0, match, actions)
 
         self.logger.info('OFPRoleReply received: '
                         'role=%s datapath=%d',
@@ -210,13 +217,14 @@ class controller(app_manager.RyuApp):
         msg = ev.msg
         dp = msg.datapath
         ofp = dp.ofproto
+        parser = dp.ofproto_parser
 
         if msg.role == ofp.OFPCR_ROLE_NOCHANGE:
             role = 'ROLE NOCHANGE'
         elif msg.role == ofp.OFPCR_ROLE_EQUAL:
             role = 'ROLE EQUAL'
         elif msg.role == ofp.OFPCR_ROLE_MASTER:
-            role = 'ROLE PRIMARY'
+            role = 'ROLE PRIMARY'      
         elif msg.role == ofp.OFPCR_ROLE_SLAVE:
             role = 'REPLICA'
         else:
@@ -267,7 +275,7 @@ class controller(app_manager.RyuApp):
         self.logger.info("PACKET IN\n dpid: %s\n in_port: %s\n src: %s\n dst: %s\n", dpid, in_port, src, dst)
         
         #switch-controller msg counter for Experiment 2
-        if int(self.experiments.hget("experiment","running")) == 2:
+        if int(self.experiments.hget("experiment","running")) == 2 and int(self.experiments.hget("2","start")) == 1:
             d = ast.literal_eval(self.experiments.hget("2","nSwitchControllerMsgs"))
             update = {self.CONF.name:int(d.get(self.CONF.name))+1}
             d.update(update)
@@ -291,7 +299,7 @@ class controller(app_manager.RyuApp):
                 self.addFlow(datapath, 1, match, actions, self.CONF.flowidletimeout, self.CONF.flowhardtimeout)
         
             #controller-switch msg counter for Experiment 2
-            if int(self.experiments.hget("experiment","running")) == 2:
+            if int(self.experiments.hget("experiment","running")) == 2 and int(self.experiments.hget("2","start")) == 1:
                 d = ast.literal_eval(self.experiments.hget("2","nControllerSwitchMsgs"))
                 update = {self.CONF.name:int(d.get(self.CONF.name))+1}
                 d.update(update)
@@ -308,7 +316,7 @@ class controller(app_manager.RyuApp):
         datapath.send_msg(out)
 
         #controller-switch msg counter for Experiment 2
-        if int(self.experiments.hget("experiment","running")) == 2:
+        if int(self.experiments.hget("experiment","running")) == 2 and int(self.experiments.hget("2","start")) == 1:
                 d = ast.literal_eval(self.experiments.hget("2","nControllerSwitchMsgs"))
                 update = {self.CONF.name:int(d.get(self.CONF.name))+1}
                 d.update(update)

@@ -221,6 +221,11 @@ def experiment2(net,experiments,conf):
             tex21.start()
             experiment2Threads.append(tex21)
 
+            #start load balancing thread
+            if conf.connectionModel == "primary-replica" and conf.primaryReplicaLoadBalancingTime > 0:
+                tex22 = ThreadPrimaryLoadBalancing(target=primaryLoadBalancing,args=[networks,conf,controllers])
+                tex22.start()
+
             #wait for threads to complete
             for t in experiment2Threads:
                 try:
@@ -519,7 +524,7 @@ if __name__ == '__main__':
     threads.append(t1)
 
     #multithreading primaryLoadBalancing
-    if conf.connectionModel == "primary-replica" and conf.primaryReplicaLoadBalancingTime > 0:
+    if conf.connectionModel == "primary-replica" and conf.primaryReplicaLoadBalancingTime > 0 and (experiments.hget("experiment","running")) == 0:
         t2 = ThreadPrimaryLoadBalancing(target=primaryLoadBalancing,args=[networks,conf,controllers])
         t2.start()
         threads.append(t2)

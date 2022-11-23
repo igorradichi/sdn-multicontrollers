@@ -1,6 +1,6 @@
-# Multicontrollers in SDN using Ryu
+# A Ryu Multicontroller Platform (SDN)
 
-**Status**: WIP 🚧
+**Status**: Finished
 
 |Work record|
 |---|
@@ -10,30 +10,23 @@
 |Electrical Engineering BSc, w/ Computer Science spec.|
 |Universidade Federal de Minas Gerais - UFMG|
 
-## Prerequisites
+## Programs
 |Application|Version used|
 |---|---|
 |Mininet|2.3.0.dev6|
-|Open vSwitch|2.13.5|
+|Open vSwitch|2.13.8|
 |Ryu|4.34|
 |Redis|5.0.7|
 |Python|3.8.10|
-|Curl|7.68|
-
-### Others
-|Application|Version used|
-|---|---|
-|Visual Studio Code|1.68.1|
+|Wireshark|3.2.3|
+|fping|4.2|
 |Ubuntu|20.04 LTS| 
 
-## Pending
-
-- Tests
-  
+ 
 ## Initialization
 - description: initialization program
 - must be run every time, before starting the other layers (in this order):
-  - Initialization -> Infrastructure -> Control -> Application
+  - Initialization -> Infrastructure -> Control
 
   ```
   sudo python3 init.py
@@ -47,6 +40,9 @@
   - ```controllersFirstPort``` port for the first controller created
   - ```nControllersPerNetwork``` number of initial controllers per network
   - ```nNetworks``` number of networks
+  - ```experiment``` experiment running (set to 0 if none)
+  - ```experimentNPackets``` number of packets sent from host to host during experiments ICMP traffic
+  - ```experiment1FailTime``` c1 failtime during Experiment 1 execution
 
 ## Infrastructure layer
 ### Network
@@ -60,9 +56,10 @@
 - ```net1.conf```
   - config file for the network being initialized
   - ```netId``` network Id
+  - ```failMode``` OpenvSwitches failmode (either ```standalone``` ou ```secure```)
   - ```ip``` IP address the switches should connect
-  - ```connectionModel``` switch-controller connection model (either ```master-slave``` or ```equal```)
-  - ```masterSlaveLoadBalancingTime``` time in seconds for the network to recurrently balance its controllers load (set to ```0``` if not desired)
+  - ```connectionModel``` switch-controller connection model (either ```primary-replica``` or ```equal```)
+  - ```primaryReplicaLoadBalancingTime``` time in seconds for the network to recurrently balance its controllers load (set to ```0``` if not desired)
   - ```nSwitches``` number of switches to be present (each switch will connect to its neighbor - linear model)
   - ```nHostsPerSwitch``` number of hosts per switch
   - ```flowIdleTimeout``` switches' flow entries idle timeout
@@ -111,7 +108,7 @@
   - ```ip``` IP address for the connection
   - ```port``` listening TCP port
     - the TCP port should be the same as the one passed in the first terminal argument
-  - ```connectionmodel``` switch-controller connection model  (either ```master-slave``` or ```equal```)
+  - ```connectionmodel``` switch-controller connection model  (either ```primary-replica``` or ```equal```)
   - ```flowidletimeout``` switches' flow entries idle timeout
   - ```flowhardtimeout``` switches' flow entries hard timeout
   - ```redisport``` Redis Server port
@@ -119,7 +116,3 @@
   - Ryu controller application file name
 - ```ryu.app.ofctl_rest``` 
   - Ryu built-in application, which enables REST interactions with the controller
-
-## Application Layer
-
-To be developed. Probably will be used to extract statistics through the control plane vision, using REST.
